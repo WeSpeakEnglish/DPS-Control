@@ -1,2 +1,158 @@
-# DPS-Control
-DPS Control – UART / Modbus tools for RD Tech (Riden) DPS &amp; DPH power supplies in one single HTML file
+# DPS Control – UART / Modbus tools for RD Tech (Riden) DPS & DPH power supplies
+
+Two ways to control a DPS-series programmable power module from a PC over its serial port:
+
+| File | What it is | Needs |
+|---|---|---|
+| `dps-control.html` | Full browser app: live readout, chart, logging, ramp/I-V sweep, sequences, auto cutoff, memory groups M0–M9, raw Modbus console, simulator | Desktop **Chrome or Edge** (Web Serial). Nothing to install. |
+| `dps5015.py` | Command-line tool + Python class | Python 3.9+, `pip install pyserial` |
+
+Both talk **Modbus RTU** directly to the supply; no vendor software is needed.
+
+---
+
+## Compatible devices
+
+The supply must be the **communication version** (sold with a USB or Bluetooth module, often labelled "USB/BT" or "CNC communication version"). Plain DPS units without the serial header cannot be controlled.
+
+| Model | Type | Range | MODEL reg (0x0B) | I-SET / S-OCP | IOUT | `dps-control.html` | `dps5015.py` |
+|---|---|---|---|---|---|---|---|
+| **DPS5015** | Buck | 0–50 V, 0–15 A, 750 W | 5015 | ×100 (0.01 A) | ×100 | ✅ auto-detected | ✅ |
+| **DPS5020** | Buck | 0–50 V, 0–20 A, 1000 W | 5020 | ×100 | ×100 | ✅ auto-detected | ⚠️ edit `I_MAX = 20` |
+| **DPS3005** | Buck | 0–30 V, 0–5 A, 160 W | 3005 | ×1000 (0.001 A) | ×100 | ✅ auto-detected | ❌ wrong current scaling |
+| **DPS5005** | Buck | 0–50 V, 0–5 A, 250 W | 5005 | ×1000 | ×100 | ✅ auto-detected | ❌ wrong current scaling |
+| **DPS8005** | Buck | 0–80 V, 0–5.1 A, 408 W | 8005 | ×1000 | ×100 | ✅ auto-detected | ❌ wrong current scaling |
+| **DPH5005** | Buck/Boost | 0–50 V, 0–5 A, 250 W | **5205** | ×1000 | ×100 | ✅ auto-detected | ❌ wrong current scaling |
+| DPH3205 | Buck/Boost | 0–32 V, 0–5 A, 160 W | 3205 (expected) | ×1000 (expected) | ×100 | ⚠️ in model list, not confirmed by any source | ❌ |
+
+For other model numbers the HTML app guesses limits from the number (e.g. 5015 → 50 V / 15 A), shows "untested model" and lets you pick the model manually in the header.
+
+> **Tested status:** the logic was tested against the built-in simulator, not on physical hardware. Register addresses and scaling come from the sources listed at the end. If a reading is off by ×10, choose the model manually and report it.
+
+### Not compatible
+
+| Device | Why |
+|---|---|
+| Riden **RD6006 / RD6012 / RD6018 / RD6024 / RD6030** and Joy-IT **JT-RD60xx / PS1440** | Also Modbus, but a completely different register map |
+| DPS units running **OpenDPS** firmware | OpenDPS uses its own serial protocol |
+| DPS units **without** the communication board, DP-series (e.g. DP30V5A, DP50V5A), DPS3012 | No serial interface |
+| DPS3003 | No communication version found in any source |
+| DPM8600, XY-series (XY6020L, XY-SK…) | Different protocols / register maps |
+
+---
+
+## Wiring
+
+| DPS serial header | USB-UART adapter (3.3 V TTL) |
+|---|---|
+| TX | RX |
+| RX | TX |
+| GND | GND |
+| VCC | **not connected** |
+
+- The header on the DPS is a small 4-pin 1.25 mm (GH / Molex Pico-style) connector.
+- Use a **3.3 V** logic adapter (CP2102, CH340, FT232 set to 3.3 V). Never feed the VCC pin of the DPS.
+- The official RD USB or Bluetooth module plugs straight in and shows up as a COM port.
+
+## Serial settings
+
+| Setting | Value |
+|---|---|
+| Protocol | Modbus RTU, function codes 0x03 (read), 0x06 (write one), 0x10 (write many) |
+| Frame | 8 data bits, no parity, 1 stop bit |
+| Baud | **9600** default. Change it by holding **▲ (V)** while powering the unit on; the same menu sets the slave address and Bluetooth PIN |
+| Slave address | 1 (factory setting in practice; the protocol document does not state it) |
+| Max registers per request | 32 |
+| Inter-frame gap | ≥ 3.5 character times (≈ 4 ms at 9600) |
+
+---
+
+## Quick start
+
+### Browser app
+
+1. Open `dps-control.html` in desktop Chrome or Edge (double-click works, file:// is fine).
+2. Set **Baud** and **Addr** to match the supply, click **Connect**, pick the COM port.
+3. The model is read from register 0x0B and limits/scaling are set automatically.
+4. **Esc** turns the output off immediately and stops every running tool.
+
+No hardware at hand? Click **Simulator** — it emulates a DPS5015 with an adjustable resistive load.
+
+### Python
+
+```
+pip install pyserial
+python dps5015.py -p COM5 status
+python dps5015.py -p COM5 set -v 12 -i 2.5
+python dps5015.py -p COM5 on
+python dps5015.py -p COM5 monitor --interval 1 --csv log.csv
+```
+
+`python dps5015.py -h` lists all commands (status, set, on, off, lock, unlock, backlight, preset, protect, ramp, monitor).
+
+---
+
+## Register map (verified)
+
+✅ = the protocol document and rdserialtool agree · ⚠️ = sources differ, see notes
+
+| Reg | Name | R/W | Meaning / scaling | Check |
+|---|---|---|---|---|
+| 0x00 | U-SET | R/W | Voltage setpoint, V ×100 | ✅ |
+| 0x01 | I-SET | R/W | Current setpoint, A ×100 (15/20 A models) or ×1000 (5 A models) | ✅ |
+| 0x02 | UOUT | R | Output voltage, V ×100 | ✅ |
+| 0x03 | IOUT | R | Output current, A ×100 | ⚠️ note 1 |
+| 0x04 | POWER | R | Output power; ×100, or ×10 above 99.99 W | ⚠️ note 2 |
+| 0x05 | UIN | R | Input voltage, V ×100 | ✅ |
+| 0x06 | LOCK | R/W | Key lock: 0 off, 1 on | ✅ |
+| 0x07 | PROTECT | R | 0 OK, 1 OVP, 2 OCP, 3 OPP | ✅ |
+| 0x08 | CV/CC | R | 0 CV, 1 CC | ✅ |
+| 0x09 | ONOFF | R/W | Output: 0 off, 1 on | ✅ |
+| 0x0A | B-LED | R/W | Backlight 0 (dark) – 5 (bright) | ✅ |
+| 0x0B | MODEL | R | Model number, e.g. 5015 (DPH5005 → 5205) | ✅ |
+| 0x0C | VERSION | R | Firmware, e.g. 17 = 1.7 | ✅ |
+| 0x23 | EXTRACT_M | R/W | Write 0–9 to load data group M0–M9 | ✅ |
+
+### Data groups M0–M9
+
+Base address = **0x50 + 0x10 × n** (M0 = 0x50, M1 = 0x60 … M9 = 0xE0). M0 is the active / power-on group, M1 and M2 are the quick-recall groups, M3–M9 are storage.
+
+| Offset | Name | Scaling | Check |
+|---|---|---|---|
+| +0 | U-SET | V ×100 | ✅ |
+| +1 | I-SET | same as 0x01 | ✅ |
+| +2 | S-OVP | V ×100 | ✅ |
+| +3 | S-OCP | same as 0x01 | ✅ |
+| +4 | S-OPP | W ×10 | ✅ |
+| +5 | B-LED | 0–5 | ✅ |
+| +6 | M-PRE | flag | ⚠️ note 3 |
+| +7 | S-INI | output on at power-up, 0/1 | ✅ |
+
+### Notes on the ⚠️ items
+
+1. **IOUT on 5 A models.** The protocol document gives IOUT 2 decimals while I-SET has 3, and rdserialtool (written on a DPS5005) also divides IOUT by 100. Both tools use ×100 for every model. On a DPS5015/5020 there is no ambiguity (both ×100). If your 5 A unit shows current 10× too high, report it.
+2. **POWER (0x04).** The decimal point moves with the range, so both tools ignore this register and compute P = U × I instead.
+3. **Group offset +6.** The protocol document calls it M-PRE, rdserialtool calls it "maintain output". Its exact effect is unclear, so the HTML app reads it and writes the same value back unchanged.
+
+Other corrections from the document: CV/CC lists "CV" for both values (1 is CC); S-INI is listed with 2 decimals but is a 0/1 flag.
+
+---
+
+## Safety
+
+- Set **OVP / OCP / OPP** before connecting a load. They live in group M0 and are enforced by the supply itself, independently of the PC.
+- The auto-cutoff and sequences run in the browser tab. If the PC sleeps, the tab is closed or the USB cable is pulled, the supply keeps its last setting. Rely on the hardware protection limits, not on the software.
+- Keep the setpoint ≤ input voltage − ~1.5 V on buck (DPS) models.
+
+---
+
+## Sources
+
+- DPS3005 CNC Communication Protocol V1.2 (RD Tech): https://wpsodp.ee.ntust.edu.tw/chapter_02/DPS3005%20CNC%20Communication%20%20Protocol%20V1.2.pdf
+- DPS5020 communication protocol, English translation V1.2: https://redmine.laas.fr/attachments/download/4753/DPS5020communication%20protocol%20-english%20translation%20V1.2.pdf
+- sigrok wiki – RDTech DPS series (models, baud, setup menu): https://sigrok.org/wiki/RDTech_DPS_series
+- rdserialtool (register map, DPS model list): https://uithub.com/Black-FX/rdserialtool
+- esphome-dps (supported models, DPH5005 = 5205, wiring, connector): https://github.com/syssi/esphome-dps
+- pyDPS5015: https://github.com/haarer/pyDPS5015
+- Riden RD60xx Modbus protocol (to show it is a different map): https://www.joy-it.net/files/files/Produkte/JT-PS1440-C-Pro/MODBUS_Protocol_RD60xx_PSxx.pdf
+
