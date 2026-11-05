@@ -1,12 +1,8 @@
-# DPS Control – UART / Modbus tools for RD Tech (Riden) DPS & DPH power supplies
+# DPS Control – Web Serial controller for RD Tech (Riden) DPS & DPH power supplies
 
-Two ways to control a DPS-series programmable power module from a PC over its serial port:
+`dps-control.html` is a single-file browser app for controlling a DPS-series programmable power module from a PC over its serial port: live readout, chart, logging, ramp/I-V sweep, sequences, auto cutoff, memory groups M0–M9, raw Modbus console and a simulator.
 
-| File | What it is | Needs |
-|---|---|---|
-| `dps-control.html` | Full browser app: live readout, chart, logging, ramp/I-V sweep, sequences, auto cutoff, memory groups M0–M9, raw Modbus console, simulator | Desktop **Chrome or Edge** (Web Serial). Nothing to install. |
-
-Both talk **Modbus RTU** directly to the supply; no vendor software is needed.
+It needs only desktop **Chrome or Edge** (Web Serial) and talks **Modbus RTU** directly to the supply. Nothing to install, no vendor software.
 
 ---
 
@@ -14,17 +10,17 @@ Both talk **Modbus RTU** directly to the supply; no vendor software is needed.
 
 The supply must be the **communication version** (sold with a USB or Bluetooth module, often labelled "USB/BT" or "CNC communication version"). Plain DPS units without the serial header cannot be controlled.
 
-| Model | Type | Range | MODEL reg (0x0B) | I-SET / S-OCP | IOUT | `dps-control.html` | 
-|---|---|---|---|---|---|---|---|
-| **DPS5015** | Buck | 0–50 V, 0–15 A, 750 W | 5015 | ×100 (0.01 A) | ×100 | ✅ auto-detected | 
-| **DPS5020** | Buck | 0–50 V, 0–20 A, 1000 W | 5020 | ×100 | ×100 | ✅ auto-detected | 
-| **DPS3005** | Buck | 0–30 V, 0–5 A, 160 W | 3005 | ×1000 (0.001 A) | ×100 | ✅ auto-detected | 
-| **DPS5005** | Buck | 0–50 V, 0–5 A, 250 W | 5005 | ×1000 | ×100 | ✅ auto-detected | 
-| **DPS8005** | Buck | 0–80 V, 0–5.1 A, 408 W | 8005 | ×1000 | ×100 | ✅ auto-detected | 
-| **DPH5005** | Buck/Boost | 0–50 V, 0–5 A, 250 W | **5205** | ×1000 | ×100 | ✅ auto-detected | 
-| DPH3205 | Buck/Boost | 0–32 V, 0–5 A, 160 W | 3205 (expected) | ×1000 (expected) | ×100 | ⚠️ in model list, not confirmed by any source | 
+| Model | Type | Range | MODEL reg (0x0B) | I-SET / S-OCP | IOUT | Status |
+|---|---|---|---|---|---|---|
+| **DPS5015** | Buck | 0–50 V, 0–15 A, 750 W | 5015 | ×100 (0.01 A) | ×100 | ✅ auto-detected |
+| **DPS5020** | Buck | 0–50 V, 0–20 A, 1000 W | 5020 | ×100 | ×100 | ✅ auto-detected |
+| **DPS3005** | Buck | 0–30 V, 0–5 A, 160 W | 3005 | ×1000 (0.001 A) | ×100 | ✅ auto-detected |
+| **DPS5005** | Buck | 0–50 V, 0–5 A, 250 W | 5005 | ×1000 | ×100 | ✅ auto-detected |
+| **DPS8005** | Buck | 0–80 V, 0–5.1 A, 408 W | 8005 | ×1000 | ×100 | ✅ auto-detected |
+| **DPH5005** | Buck/Boost | 0–50 V, 0–5 A, 250 W | **5205** | ×1000 | ×100 | ✅ auto-detected |
+| DPH3205 | Buck/Boost | 0–32 V, 0–5 A, 160 W | 3205 (expected) | ×1000 (expected) | ×100 | ⚠️ in model list, not confirmed by any source |
 
-For other model numbers the HTML app guesses limits from the number (e.g. 5015 → 50 V / 15 A), shows "untested model" and lets you pick the model manually in the header.
+For other model numbers the app guesses limits from the number (e.g. 5015 → 50 V / 15 A), shows "untested model" and lets you pick the model manually in the header.
 
 > **Tested status:** the logic was tested against the built-in simulator, not on physical hardware. Register addresses and scaling come from the sources listed at the end. If a reading is off by ×10, choose the model manually and report it.
 
@@ -68,14 +64,14 @@ For other model numbers the HTML app guesses limits from the number (e.g. 5015 �
 
 ## Quick start
 
-### Browser app
-
 1. Open `dps-control.html` in desktop Chrome or Edge (double-click works, file:// is fine).
 2. Set **Baud** and **Addr** to match the supply, click **Connect**, pick the COM port.
 3. The model is read from register 0x0B and limits/scaling are set automatically.
 4. **Esc** turns the output off immediately and stops every running tool.
 
 No hardware at hand? Click **Simulator** — it emulates a DPS5015 with an adjustable resistive load.
+
+---
 
 ## Register map (verified)
 
@@ -115,9 +111,9 @@ Base address = **0x50 + 0x10 × n** (M0 = 0x50, M1 = 0x60 … M9 = 0xE0). M0 is 
 
 ### Notes on the ⚠️ items
 
-1. **IOUT on 5 A models.** The protocol document gives IOUT 2 decimals while I-SET has 3, and rdserialtool (written on a DPS5005) also divides IOUT by 100. Both tools use ×100 for every model. On a DPS5015/5020 there is no ambiguity (both ×100). If your 5 A unit shows current 10× too high, report it.
-2. **POWER (0x04).** The decimal point moves with the range, so both tools ignore this register and compute P = U × I instead.
-3. **Group offset +6.** The protocol document calls it M-PRE, rdserialtool calls it "maintain output". Its exact effect is unclear, so the HTML app reads it and writes the same value back unchanged.
+1. **IOUT on 5 A models.** The protocol document gives IOUT 2 decimals while I-SET has 3, and rdserialtool (written on a DPS5005) also divides IOUT by 100. The app uses ×100 for every model. On a DPS5015/5020 there is no ambiguity (both ×100). If your 5 A unit shows current 10× too high, report it.
+2. **POWER (0x04).** The decimal point moves with the range, so the app ignores this register and compute P = U × I instead.
+3. **Group offset +6.** The protocol document calls it M-PRE, rdserialtool calls it "maintain output". Its exact effect is unclear, so the app reads it and writes the same value back unchanged.
 
 Other corrections from the document: CV/CC lists "CV" for both values (1 is CC); S-INI is listed with 2 decimals but is a 0/1 flag.
 
@@ -136,4 +132,3 @@ Other corrections from the document: CV/CC lists "CV" for both values (1 is CC);
 - DPS3005 CNC Communication Protocol V1.2 (RD Tech): https://wpsodp.ee.ntust.edu.tw/chapter_02/DPS3005%20CNC%20Communication%20%20Protocol%20V1.2.pdf
 - DPS5020 communication protocol, English translation V1.2: https://redmine.laas.fr/attachments/download/4753/DPS5020communication%20protocol%20-english%20translation%20V1.2.pdf
 - Riden RD60xx Modbus protocol (to show it is a different map): https://www.joy-it.net/files/files/Produkte/JT-PS1440-C-Pro/MODBUS_Protocol_RD60xx_PSxx.pdf
-
