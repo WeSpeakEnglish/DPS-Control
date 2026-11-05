@@ -1,0 +1,953 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DPS Control</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0f1115;--panel:#171a21;--panel2:#1f232c;--line:#2a2f3a;--text:#e6e8ec;--mute:#8b93a3;
+--v:#facc15;--i:#38bdf8;--p:#f472b6;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--acc:#6366f1}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+header h1{font-size:16px;margin:0 6px 0 0;font-weight:650}
+.spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-size:12px}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--mute)}
+.pill.ok i{background:var(--ok)}.pill.warn i{background:var(--warn)}.pill.err i{background:var(--bad)}
+label.f{display:flex;align-items:center;gap:6px;color:var(--mute);font-size:12px}
+input,select,button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+input[type=number]{width:90px}
+input[type=range]{padding:0;accent-color:var(--acc)}
+input[type=checkbox]{accent-color:var(--acc)}
+button{cursor:pointer}button:hover:not(:disabled){border-color:#4a5263}
+button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+button.danger{background:#7f1d1d;border-color:#b91c1c}
+button:disabled{opacity:.45;cursor:not-allowed}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+main{display:grid;grid-template-columns:minmax(340px,430px) 1fr;gap:12px;padding:12px 16px}
+.col{display:flex;flex-direction:column;gap:12px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0}
+.card h2{margin:0 0 10px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.ro{display:flex;align-items:baseline;justify-content:space-between;background:#0b0d11;border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin-bottom:6px}
+.ro .val{font:600 46px/1.05 ui-monospace,"Cascadia Mono",Consolas,monospace;font-variant-numeric:tabular-nums}
+.ro .unit{font-size:18px;color:var(--mute);margin-left:4px}
+.ro .sub{font-size:12px;color:var(--mute);text-align:right;font-variant-numeric:tabular-nums}
+.ro.v .val{color:var(--v)}.ro.i .val{color:var(--i)}.ro.p .val{color:var(--p)}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.badge{padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600;background:var(--panel2);border:1px solid var(--line)}
+.badge.cv{color:var(--v);border-color:#854d0e}.badge.cc{color:#fb923c;border-color:#9a3412}
+.badge.ok{color:var(--ok);border-color:#166534}.badge.bad{background:var(--bad);color:#fff;border-color:var(--bad)}
+.outbtn{width:100%;margin-top:10px;padding:12px;font-size:18px;font-weight:700;letter-spacing:.06em}
+.outbtn.on{background:#14532d;border-color:var(--ok);color:#bbf7d0}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}
+.grid2{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center}
+.steps{display:flex;gap:4px;flex-wrap:wrap}
+.steps button{padding:3px 6px;font-size:12px;min-width:46px;font-variant-numeric:tabular-nums}
+.chartbox{position:relative;height:360px}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+.stat{background:var(--panel2);border-radius:8px;padding:6px 10px}
+.stat b{display:block;font:600 18px ui-monospace,Consolas,monospace;font-variant-numeric:tabular-nums}
+.stat span{font-size:11px;color:var(--mute)}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:-4px 0 12px;flex-wrap:wrap}
+.tab{background:none;border:none;border-bottom:2px solid transparent;border-radius:0;padding:8px 12px;color:var(--mute)}
+.tab.active{color:var(--text);border-bottom-color:var(--acc)}
+.pane{display:none}.pane.active{display:block}
+table{border-collapse:collapse;width:100%}
+th,td{padding:4px 6px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;white-space:nowrap}
+th{color:var(--mute);font-weight:500;font-size:12px}
+td input{width:78px}
+tr.cur td{background:#312e81}
+.scroll{overflow:auto}
+.log{height:260px;overflow:auto;background:#0b0d11;border:1px solid var(--line);border-radius:6px;padding:6px;font:12px/1.5 ui-monospace,Consolas,monospace;white-space:pre}
+.tx{color:#93c5fd}.rx{color:#86efac}.er{color:#fca5a5}
+.progress{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;margin:8px 0}
+.progress>i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}
+.banner{display:none;padding:9px 16px;font-weight:600}
+.banner.show{display:block}
+#noSerial{background:#78350f}
+#protBanner{background:#7f1d1d;cursor:pointer}
+.muted{color:var(--mute);font-size:12px}
+.full{grid-column:1/-1}
+.split{display:grid;grid-template-columns:minmax(300px,1fr) minmax(300px,1fr);gap:16px}
+#toast{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:6px;z-index:10}
+#toast div{background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--acc);padding:8px 12px;border-radius:6px;max-width:380px;box-shadow:0 4px 16px #0008}
+#toast div.err{border-left-color:var(--bad)}
+@media(max-width:1000px){main{grid-template-columns:1fr}.split{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚡ DPS Control</h1>
+  <span class="pill" id="status"><i></i><span>Disconnected</span></span>
+  <span id="modelInfo" class="muted"></span>
+  <div class="spacer"></div>
+  <label class="f">Baud <select id="baud"><option>2400</option><option>4800</option><option selected>9600</option><option>19200</option></select></label>
+  <label class="f">Addr <input id="addr" type="number" min="1" max="255" value="1" style="width:60px"></label>
+  <label class="f">Poll ms <input id="poll" type="number" min="100" max="10000" step="50" value="500" style="width:72px"></label>
+  <label class="f">Timeout ms <input id="timeout" type="number" min="50" max="3000" step="50" value="300" style="width:72px"></label>
+  <label class="f">Model <select id="modelSel"><option value="auto">Auto</option><option value="3005">DPS3005</option><option value="5005">DPS5005</option><option value="8005">DPS8005</option><option value="5205">DPH5005</option><option value="3205">DPH3205</option><option value="5015">DPS5015</option><option value="5020">DPS5020</option></select></label>
+  <label class="f" id="simRBox" hidden>Sim load Ω <input id="simR" type="number" value="8" step="0.5" min="0.1" style="width:64px"></label>
+  <button id="btnConnect" class="primary">Connect</button>
+  <button id="btnSim">Simulator</button>
+</header>
+<div class="banner" id="noSerial">Web Serial isn't available here. Use desktop Chrome or Edge and open this file directly (file://) or from http://localhost. The Simulator still works.</div>
+<div class="banner" id="protBanner" title="Click to dismiss">Protection tripped</div>
+
+<main>
+  <div class="col">
+    <section class="card">
+      <h2>Output <span class="muted" id="lastUpd">—</span></h2>
+      <div class="ro v"><div><span class="val" id="roU">--.--</span><span class="unit">V</span></div><div class="sub">set <span id="roUset">--</span> V<br>in <span id="roUin">--</span> V</div></div>
+      <div class="ro i"><div><span class="val" id="roI">-.--</span><span class="unit">A</span></div><div class="sub">set <span id="roIset">--</span> A</div></div>
+      <div class="ro p"><div><span class="val" id="roP">--.--</span><span class="unit">W</span></div><div class="sub">R<sub>load</sub> <span id="roR">--</span> Ω</div></div>
+      <div class="badges"><span class="badge" id="bMode">--</span><span class="badge" id="bProt">--</span><span class="badge" id="bLock">--</span></div>
+      <fieldset class="needconn" disabled><button class="outbtn" id="btnOut">OUTPUT OFF</button></fieldset>
+      <div class="muted" style="margin-top:6px">Esc = emergency output OFF and stop all tools</div>
+    </section>
+
+    <section class="card">
+      <h2>Setpoints</h2>
+      <fieldset class="needconn" disabled>
+        <div class="grid2">
+          <span>Voltage</span><div class="row" style="margin:0"><input id="setV" type="number" step="0.01" min="0" value="0"> V</div>
+          <span></span><div class="steps" data-p="V"><button data-d="-1">−1</button><button data-d="-0.1">−0.1</button><button data-d="-0.01">−0.01</button><button data-d="0.01">+0.01</button><button data-d="0.1">+0.1</button><button data-d="1">+1</button></div>
+          <span>Current</span><div class="row" style="margin:0"><input id="setI" type="number" step="0.01" min="0" value="0"> A</div>
+          <span></span><div class="steps" data-p="I"><button data-d="-1">−1</button><button data-d="-0.1">−0.1</button><button data-d="-0.01">−0.01</button><button data-d="0.01">+0.01</button><button data-d="0.1">+0.1</button><button data-d="1">+1</button></div>
+        </div>
+        <div class="row" style="margin-top:10px"><button class="primary" id="btnApply">Apply V &amp; I</button><button id="btnLock">Lock keys</button></div>
+        <div class="row"><span class="muted">Backlight</span><input id="bled" type="range" min="0" max="5" step="1" value="3"><span id="bledVal" class="muted">3</span></div>
+        <div class="muted">Enter in a field applies it. Step buttons apply immediately.</div>
+      </fieldset>
+    </section>
+
+    <section class="card">
+      <h2>Protection (M0)</h2>
+      <fieldset class="needconn" disabled>
+        <div class="grid2">
+          <span>OVP</span><div><input id="pOVP" type="number" step="0.01" min="0"> V</div>
+          <span>OCP</span><div><input id="pOCP" type="number" step="0.01" min="0"> A</div>
+          <span>OPP</span><div><input id="pOPP" type="number" step="0.1" min="0"> W</div>
+        </div>
+        <div class="row" style="margin-top:8px"><button id="btnProtRead">Read</button><button class="primary" id="btnProtWrite">Write</button></div>
+        <div class="muted">Writes the active data group M0 (registers 0x52–0x54).</div>
+      </fieldset>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="card">
+      <h2>Live chart
+        <span class="row" style="margin:0">
+          <select id="chWin"><option value="30">30 s</option><option value="60" selected>1 min</option><option value="300">5 min</option><option value="900">15 min</option><option value="3600">1 h</option><option value="0">All</option></select>
+          <button id="btnPause">Pause</button><button id="btnChClear">Clear</button>
+        </span>
+      </h2>
+      <div class="chartbox"><canvas id="chart"></canvas></div>
+      <div id="chartMsg" class="muted"></div>
+    </section>
+
+    <section class="card">
+      <h2>Measurements &amp; logging</h2>
+      <div class="stats">
+        <div class="stat"><b id="stEl">0:00:00</b><span>elapsed</span></div>
+        <div class="stat"><b id="stAh">0.0000</b><span>Ah (output on)</span></div>
+        <div class="stat"><b id="stWh">0.0000</b><span>Wh (output on)</span></div>
+        <div class="stat"><b id="stUmin">--</b><span>U min V</span></div>
+        <div class="stat"><b id="stUmax">--</b><span>U max V</span></div>
+        <div class="stat"><b id="stImax">--</b><span>I max A</span></div>
+        <div class="stat"><b id="stPmax">--</b><span>P max W</span></div>
+        <div class="stat"><b id="stRate">--</b><span>samples / s</span></div>
+        <div class="stat"><b id="stComm">0 / 0</b><span>frames ok / failed</span></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button id="btnResetCnt">Reset counters</button>
+        <button id="btnRec">● Record</button><span id="recInfo" class="muted">0 rows</span>
+        <button id="btnExportCsv">Export CSV</button><button id="btnClearRec">Clear log</button>
+      </div>
+    </section>
+  </div>
+
+  <section class="card full">
+    <div class="tabs">
+      <button class="tab active" data-tab="ramp">Ramp / I-V sweep</button>
+      <button class="tab" data-tab="seq">Sequence</button>
+      <button class="tab" data-tab="cut">Auto cutoff</button>
+      <button class="tab" data-tab="mem">Memory M0–M9</button>
+      <button class="tab" data-tab="con">Modbus console</button>
+    </div>
+
+    <div class="pane active" id="pane-ramp">
+      <div class="split">
+        <div>
+          <div class="grid2">
+            <span>Parameter</span><select id="rpPar"><option value="V">Voltage (V)</option><option value="I">Current (A)</option></select>
+            <span>Start</span><input id="rpStart" type="number" step="0.01" value="0">
+            <span>End</span><input id="rpEnd" type="number" step="0.01" value="12">
+            <span>Step</span><input id="rpStep" type="number" step="0.01" value="0.5" min="0.01">
+            <span>Dwell per step</span><div><input id="rpDwell" type="number" step="50" value="1000" min="100"> ms</div>
+          </div>
+          <div class="row"><label><input type="checkbox" id="rpOn" checked> Output ON at start</label><label><input type="checkbox" id="rpOff"> Output OFF at end</label></div>
+          <fieldset class="needconn" disabled><div class="row"><button class="primary" id="btnRamp">Run</button><button class="danger toolstop">Stop</button></div></fieldset>
+          <div class="progress"><i id="rpProg"></i></div>
+          <div id="rpStatus" class="muted">Idle</div>
+        </div>
+        <div>
+          <div class="row" style="margin-top:0"><b>Sweep result</b><span class="muted" id="swInfo">0 points</span><button id="btnSwCsv">Export sweep CSV</button></div>
+          <div class="muted">One point is captured at the end of each dwell: setpoint, measured U, I, P and mode.</div>
+          <div class="scroll" style="max-height:220px"><table><thead><tr><th>Set</th><th>U V</th><th>I A</th><th>P W</th><th>Mode</th></tr></thead><tbody id="swBody"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-seq">
+      <div class="scroll"><table><thead><tr><th>#</th><th>Voltage V</th><th>Current A</th><th>Output</th><th>Duration s</th><th></th></tr></thead><tbody id="sqBody"></tbody></table></div>
+      <div class="row"><button id="btnSqAdd">+ Add step</button><span class="muted">Loops (0 = forever)</span><input id="sqLoops" type="number" min="0" value="1" style="width:70px">
+        <label><input type="checkbox" id="sqOffEnd" checked> Output OFF when finished</label>
+        <button id="btnSqSave">Save JSON</button><button id="btnSqLoad">Load JSON</button><input type="file" id="sqFile" accept=".json" hidden></div>
+      <fieldset class="needconn" disabled><div class="row"><button class="primary" id="btnSeq">Run sequence</button><button class="danger toolstop">Stop</button></div></fieldset>
+      <div id="sqStatus" class="muted">Idle</div>
+    </div>
+
+    <div class="pane" id="pane-cut">
+      <div class="muted" style="margin-bottom:8px">When armed, the output switches OFF as soon as any enabled condition is met. Typical use: CC/CV battery charging with a termination current.</div>
+      <div class="scroll"><table>
+        <tr><td><label><input type="checkbox" id="cuI"> Current falls below</label></td><td><input id="cuIv" type="number" step="0.01" value="0.1"> A for <input id="cuIt" type="number" value="10" style="width:60px"> s, checked after <input id="cuGrace" type="number" value="10" style="width:60px"> s</td></tr>
+        <tr><td><label><input type="checkbox" id="cuU"> Voltage reaches</label></td><td><input id="cuUv" type="number" step="0.01" value="14.4"> V</td></tr>
+        <tr><td><label><input type="checkbox" id="cuIm"> Current reaches</label></td><td><input id="cuImv" type="number" step="0.01" value="5"> A</td></tr>
+        <tr><td><label><input type="checkbox" id="cuP"> Power reaches</label></td><td><input id="cuPv" type="number" step="0.1" value="100"> W</td></tr>
+        <tr><td><label><input type="checkbox" id="cuT"> Time elapsed</label></td><td><input id="cuTv" type="number" step="1" value="60"> min</td></tr>
+        <tr><td><label><input type="checkbox" id="cuAh"> Charge delivered</label></td><td><input id="cuAhv" type="number" step="0.01" value="2"> Ah</td></tr>
+        <tr><td><label><input type="checkbox" id="cuWh"> Energy delivered</label></td><td><input id="cuWhv" type="number" step="0.1" value="20"> Wh</td></tr>
+      </table></div>
+      <div class="row"><label><input type="checkbox" id="cuReset" checked> Reset Ah/Wh counters when arming</label><label><input type="checkbox" id="cuBeep" checked> Beep on cutoff</label></div>
+      <fieldset class="needconn" disabled><div class="row"><button class="primary" id="btnArm">Arm</button><span id="cutArm" class="badge">DISARMED</span><span class="muted">armed for <b id="cutElapsed">0:00:00</b></span></div></fieldset>
+      <div id="cutStatus" class="muted"></div>
+    </div>
+
+    <div class="pane" id="pane-mem">
+      <fieldset class="needconn" disabled>
+        <div class="row" style="margin-top:0"><button class="primary" id="btnMemRead">Read all groups</button><span class="muted">M0 = power-on/active group · M1, M2 = quick-recall groups · M3–M9 = storage</span></div>
+        <div class="scroll"><table><thead><tr><th>Group</th><th>U V</th><th>I A</th><th>OVP V</th><th>OCP A</th><th>OPP W</th><th>Backlight</th><th>Output at power-on</th><th></th></tr></thead><tbody id="memBody"></tbody></table></div>
+      </fieldset>
+    </div>
+
+    <div class="pane" id="pane-con">
+      <div class="split">
+        <div>
+          <fieldset class="needconn" disabled>
+            <div class="row" style="margin-top:0"><b>Read</b> start <input id="cnRs" value="0x00" style="width:80px"> count <input id="cnRn" type="number" value="13" min="1" max="32" style="width:60px"><button id="btnCnRead">Read (0x03)</button></div>
+            <div class="row"><b>Write</b> reg <input id="cnWr" value="0x09" style="width:80px"> value <input id="cnWv" value="0" style="width:80px"><button id="btnCnWrite">Write (0x06)</button></div>
+          </fieldset>
+          <div class="scroll" style="max-height:200px"><table><thead><tr><th>Reg</th><th>Name</th><th>Hex</th><th>Dec</th></tr></thead><tbody id="cnOut"></tbody></table></div>
+          <details style="margin-top:8px"><summary class="muted">Register map</summary>
+            <table id="regMap"></table>
+          </details>
+        </div>
+        <div>
+          <div class="row" style="margin-top:0"><b>Frame log</b><label><input type="checkbox" id="logPoll"> include polling</label><label><input type="checkbox" id="logFollow" checked> follow</label><button id="btnLogClear">Clear</button></div>
+          <div class="log" id="log"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ============================== helpers ============================== */
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('dps.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('dps.' + k, JSON.stringify(v)); } catch {} }
+};
+function toast(msg, err) {
+  const d = document.createElement('div'); if (err) d.className = 'err'; d.textContent = msg;
+  $('#toast').appendChild(d); setTimeout(() => d.remove(), err ? 7000 : 3500);
+}
+function num(sel) { return parseFloat($(sel).value); }
+function parseNum(s) { s = String(s).trim(); const n = /^0x/i.test(s) ? parseInt(s, 16) : parseInt(s, 10); if (!Number.isFinite(n)) throw new Error('Bad number: ' + s); return n; }
+function fmtDur(s) { s = Math.max(0, Math.floor(s)); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60; return `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}`; }
+function download(name, text, type) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: type || 'text/plain' }));
+  a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function stamp() { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`; }
+let audioCtx;
+function beep() {
+  try {
+    audioCtx = audioCtx || new AudioContext();
+    [0, 0.25, 0.5].forEach(t => { const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.frequency.value = 1760; g.gain.value = 0.15;
+      o.connect(g); g.connect(audioCtx.destination); o.start(audioCtx.currentTime + t); o.stop(audioCtx.currentTime + t + 0.15); });
+  } catch {}
+}
+
+/* ============================== Modbus RTU ============================== */
+const REG = { USET: 0, ISET: 1, UOUT: 2, IOUT: 3, POWER: 4, UIN: 5, LOCK: 6, PROTECT: 7, CVCC: 8, ONOFF: 9, BLED: 10, MODEL: 11, VERSION: 12, EXTRACT: 0x23, GROUP: 0x50 };
+const PROT = ['OK', 'OVP', 'OCP', 'OPP'];
+const REGMAP = [
+  [0x00, 'U-SET', 'voltage setpoint, V ×100', 'R/W'], [0x01, 'I-SET', 'current setpoint, A ×100 (×1000 on 5 A models)', 'R/W'],
+  [0x02, 'UOUT', 'output voltage, V ×100', 'R'], [0x03, 'IOUT', 'output current, A ×100', 'R'], [0x04, 'POWER', 'output power, ×100 (or ×10 above 99.99 W)', 'R'],
+  [0x05, 'UIN', 'input voltage, V ×100', 'R'], [0x06, 'LOCK', 'key lock 0/1', 'R/W'], [0x07, 'PROTECT', '0 OK, 1 OVP, 2 OCP, 3 OPP', 'R'],
+  [0x08, 'CV/CC', '0 CV, 1 CC', 'R'], [0x09, 'ONOFF', 'output 0/1', 'R/W'], [0x0A, 'B-LED', 'backlight 0–5', 'R/W'],
+  [0x0B, 'MODEL', 'e.g. 5015 (DPH5005 reports 5205)', 'R'], [0x0C, 'VERSION', 'firmware', 'R'], [0x23, 'EXTRACT_M', 'write 0–9 to recall group', 'R/W'],
+  [0x50, 'M0 U-SET', 'group n base = 0x50 + 0x10·n', 'R/W'], [0x51, 'I-SET', '', 'R/W'], [0x52, 'S-OVP', 'V ×100', 'R/W'],
+  [0x53, 'S-OCP', 'A ×100 (×1000 on 5 A models)', 'R/W'], [0x54, 'S-OPP', 'W ×10', 'R/W'], [0x55, 'B-LED', '', 'R/W'], [0x56, 'M-PRE', 'preset flag (meaning varies by source; preserved)', 'R/W'],
+  [0x57, 'S-INI', 'output on at power-on 0/1', 'R/W']
+];
+function regName(r) { const e = REGMAP.find(x => x[0] === r); if (e) return e[1]; if (r >= 0x50 && r < 0xF0) { const g = (r - 0x50) >> 4, k = (r - 0x50) & 15; return k < 8 ? `M${g} ${['U-SET', 'I-SET', 'S-OVP', 'S-OCP', 'S-OPP', 'B-LED', 'M-PRE', 'S-INI'][k]}` : ''; } return ''; }
+
+function crc16(b) { let c = 0xFFFF; for (const x of b) { c ^= x; for (let i = 0; i < 8; i++) c = (c & 1) ? (c >>> 1) ^ 0xA001 : c >>> 1; } return c; }
+function withCrc(arr) { const f = new Uint8Array(arr.length + 2); f.set(arr); const c = crc16(f.subarray(0, arr.length)); f[arr.length] = c & 255; f[arr.length + 1] = c >> 8; return f; }
+function crcOk(r) { if (r.length < 4) return false; const c = crc16(r.subarray(0, r.length - 2)); return r[r.length - 2] === (c & 255) && r[r.length - 1] === (c >> 8); }
+function hex(u) { return Array.from(u, b => b.toString(16).padStart(2, '0').toUpperCase()).join(' '); }
+
+function log(kind, bytes, tag, extra) {
+  if (tag === 'poll' && !$('#logPoll').checked) return;
+  const el = $('#log'), d = document.createElement('div');
+  d.className = kind === 'TX' ? 'tx' : kind === 'RX' ? 'rx' : 'er';
+  const now = new Date();
+  d.textContent = `${now.toTimeString().slice(0, 8)}.${String(now.getMilliseconds()).padStart(3, '0')} ${kind.padEnd(3)} ${bytes ? hex(bytes) : ''}${extra ? '   ' + extra : ''}`;
+  el.appendChild(d); while (el.childElementCount > 800) el.firstChild.remove();
+  if ($('#logFollow').checked) el.scrollTop = el.scrollHeight;
+}
+
+class SerialTransport {
+  constructor(port) { this.port = port; this.buf = []; this.waiter = null; this.reading = false; }
+  async open(baud) {
+    this.baud = baud;
+    await this.port.open({ baudRate: baud, dataBits: 8, parity: 'none', stopBits: 1, bufferSize: 1024 });
+    this.writer = this.port.writable.getWriter();
+    this.reading = true; this.readLoop();
+  }
+  async readLoop() {
+    while (this.reading && this.port.readable) {
+      this.reader = this.port.readable.getReader();
+      try {
+        for (;;) {
+          const { value, done } = await this.reader.read();
+          if (done) break;
+          if (value) { for (const b of value) this.buf.push(b); if (this.waiter) this.waiter(); }
+        }
+      } catch (e) {
+        if (this.reading && e.name !== 'BreakError' && e.name !== 'FramingError' && e.name !== 'ParityError' && e.name !== 'BufferOverrunError') { onTransportLost(e); break; }
+      } finally { try { this.reader.releaseLock(); } catch {} }
+    }
+  }
+  async exchange(frame, expect, timeout) {
+    this.buf = [];
+    await this.writer.write(frame);
+    return new Promise(resolve => {
+      let timer;
+      const cleanup = () => { clearTimeout(timer); this.waiter = null; };
+      const check = () => {
+        const b = this.buf;
+        if (b.length >= 5 && (b[1] & 0x80)) { cleanup(); resolve(new Uint8Array(b.slice(0, 5))); }
+        else if (b.length >= expect) { cleanup(); resolve(new Uint8Array(b.slice(0, expect))); }
+      };
+      timer = setTimeout(() => { cleanup(); resolve(new Uint8Array(this.buf)); }, timeout);
+      this.waiter = check; check();
+    });
+  }
+  async close() {
+    this.reading = false;
+    try { await this.reader?.cancel(); } catch {}
+    try { this.writer?.releaseLock(); } catch {}
+    try { await this.port.close(); } catch {}
+  }
+}
+
+/* Simulated DPS5015 with a resistive load, for trying the UI without hardware */
+class SimTransport {
+  constructor() {
+    const r = this.r = new Array(0x50 + 0x10 * 10).fill(0);
+    r[REG.MODEL] = 5015; r[REG.VERSION] = 17; r[REG.UIN] = 5520; r[REG.BLED] = 4;
+    for (let g = 0; g < 10; g++) { const b = 0x50 + 16 * g; [500 + g * 100, 100 + g * 10, 5200, 1550, 7800, 4, g, 0].forEach((v, k) => r[b + k] = v); }
+    r[0] = r[0x50]; r[1] = r[0x51];
+  }
+  async open(baud) { this.baud = baud; }
+  async close() {}
+  physics() {
+    const r = this.r, R = Math.max(0.05, parseFloat($('#simR').value) || 8);
+    if (!r[REG.ONOFF]) { r[2] = 0; r[3] = 0; r[4] = 0; r[8] = 0; return; }
+    const uset = r[0] / 100, iset = r[1] / 100;
+    let u = uset, i = u / R, cc = false;
+    if (i > iset) { i = iset; u = i * R; cc = true; }
+    u = Math.max(0, u + (Math.random() - 0.5) * 0.02); i = Math.max(0, i + (Math.random() - 0.5) * 0.01);
+    const p = u * i;
+    let prot = 0;
+    if (u > r[0x52] / 100) prot = 1; else if (i > r[0x53] / 100) prot = 2; else if (p > r[0x54] / 10) prot = 3;
+    if (prot) { r[7] = prot; r[9] = 0; r[2] = 0; r[3] = 0; r[4] = 0; r[8] = 0; return; }
+    r[2] = Math.round(u * 100); r[3] = Math.round(i * 100); r[4] = Math.round(p * (p < 100 ? 100 : 10)); r[8] = cc ? 1 : 0;
+    r[5] = 5520 - Math.round(p / 3);
+  }
+  writable(reg) { return [0, 1, 6, 9, 10, 0x23].includes(reg) || (reg >= 0x50 && reg < this.r.length); }
+  set(reg, v) {
+    const r = this.r; r[reg] = v;
+    if (reg === 0) r[0x50] = v; if (reg === 1) r[0x51] = v; if (reg === 0x50) r[0] = v; if (reg === 0x51) r[1] = v;
+    if (reg === 0x55) r[10] = v; if (reg === 10) r[0x55] = v;
+    if (reg === 9 && v) r[7] = 0;
+    if (reg === 0x23 && v <= 9) { const b = 0x50 + 16 * v; for (let k = 0; k < 8; k++) r[0x50 + k] = r[b + k]; r[0] = r[0x50]; r[1] = r[0x51]; r[10] = r[0x55]; }
+  }
+  exc(a, fc, code) { return withCrc([a, fc | 0x80, code]); }
+  handle(f) {
+    if (!crcOk(f)) return new Uint8Array(0);
+    const a = f[0], fc = f[1], r = this.r;
+    if (a !== 1 && a !== 0) return new Uint8Array(0);
+    this.physics();
+    const st = (f[2] << 8) | f[3];
+    if (fc === 3) {
+      const n = (f[4] << 8) | f[5];
+      if (n < 1 || n > 32 || st + n > r.length) return this.exc(a, fc, 2);
+      const out = [a, 3, 2 * n]; for (let k = 0; k < n; k++) { const v = r[st + k] & 0xFFFF; out.push(v >> 8, v & 255); }
+      return withCrc(out);
+    }
+    if (fc === 6) { if (!this.writable(st)) return this.exc(a, fc, 2); this.set(st, (f[4] << 8) | f[5]); this.physics(); return withCrc(Array.from(f.subarray(0, 6))); }
+    if (fc === 16) {
+      const n = (f[4] << 8) | f[5];
+      for (let k = 0; k < n; k++) { if (!this.writable(st + k)) return this.exc(a, fc, 2); }
+      for (let k = 0; k < n; k++) this.set(st + k, (f[7 + 2 * k] << 8) | f[8 + 2 * k]);
+      this.physics(); return withCrc(Array.from(f.subarray(0, 6)));
+    }
+    return this.exc(a, fc, 1);
+  }
+  async exchange(frame, expect, timeout) {
+    const resp = this.handle(frame);
+    await sleep(4 + (frame.length + resp.length) * 11000 / this.baud);
+    return resp;
+  }
+}
+
+class Modbus {
+  constructor(t, addr, baud) { this.t = t; this.addr = addr; this.q = Promise.resolve(); this.timeout = 300; this.retries = 3; this.gap = Math.max(5, 3.5 * 11000 / baud); }
+  run(fn) { const p = this.q.then(fn, fn); this.q = p.catch(() => {}); return p; }
+  async txn(pdu, expect, tag) {
+    const f = withCrc([this.addr, ...pdu]);
+    let err = 'no response';
+    for (let a = 0; a < this.retries; a++) {
+      log('TX', f, tag);
+      const r = await this.t.exchange(f, expect, this.timeout);
+      log('RX', r, tag, r.length ? '' : '(timeout)');
+      await sleep(this.gap);
+      if (r.length >= 5 && r[1] === (pdu[0] | 0x80) && crcOk(r.subarray(0, 5))) {
+        S.comm.err++; const msg = `Modbus exception ${r[2]} (${['', 'illegal function', 'illegal address', 'illegal value', 'device failure'][r[2]] || '?'})`;
+        log('ERR', null, null, msg); throw new Error(msg);
+      }
+      if (r.length !== expect) { err = `timeout (${r.length}/${expect} bytes)`; continue; }
+      if (!crcOk(r)) { err = 'CRC error'; continue; }
+      if (r[0] !== this.addr || r[1] !== pdu[0]) { err = 'unexpected reply'; continue; }
+      S.comm.ok++; return r;
+    }
+    S.comm.err++; log('ERR', null, null, err);
+    throw new Error('No valid reply: ' + err);
+  }
+  read(start, n, tag) {
+    return this.run(async () => {
+      const r = await this.txn([3, start >> 8, start & 255, n >> 8, n & 255], 5 + 2 * n, tag);
+      const out = []; for (let k = 0; k < n; k++) out.push((r[3 + 2 * k] << 8) | r[4 + 2 * k]); return out;
+    });
+  }
+  write(reg, v, tag) { v = Math.round(v) & 0xFFFF; return this.run(() => this.txn([6, reg >> 8, reg & 255, v >> 8, v & 255], 8, tag)); }
+  writeMany(start, vals, tag) {
+    vals = vals.map(v => Math.round(v) & 0xFFFF);
+    const pdu = [16, start >> 8, start & 255, 0, vals.length, vals.length * 2];
+    vals.forEach(v => pdu.push(v >> 8, v & 255));
+    return this.run(() => this.txn(pdu, 8, tag));
+  }
+}
+
+/* ============================== state ============================== */
+const S = {
+  t: null, mb: null, connected: false, sim: false,
+  model: 5015, version: 0, vs: 100, is: 100, io: 100, ps: 10, vmax: 50, imax: 15,
+  last: null, prevProt: 0, t0: null, lastT: null, ah: 0, wh: 0, cntT0: performance.now(),
+  min: {}, max: {}, comm: { ok: 0, err: 0 }, failStreak: 0, rateWin: [],
+  rec: false, recRows: [], sweep: [], needFill: true,
+  tool: null, stop: false, pollTimer: null, paused: false,
+  cd: { v: [], i: [], p: [] },
+  cut: { armed: false, t0: 0, lowSince: null },
+  seq: store.get('seq', [{ v: 5, i: 1, on: 1, d: 5 }, { v: 12, i: 1, on: 1, d: 5 }, { v: 3.3, i: 0.5, on: 1, d: 5 }, { v: 0, i: 1, on: 0, d: 2 }]),
+  mem: []
+};
+/* fI: current setpoints (I-SET, S-OCP). fIo: measured current (IOUT). */
+const fV = v => v.toFixed(2), fI = i => i.toFixed(S.is === 1000 ? 3 : 2), fIo = i => i.toFixed(S.io === 1000 ? 3 : 2), fP = p => p.toFixed(p >= 100 ? 1 : 2);
+
+/* Value the MODEL register (0x0B) reports -> name, limits, current scaling.
+   is = I-SET / S-OCP scale, io = IOUT scale (protocol doc + rdserialtool: IOUT has 2 decimals on every model). */
+const MODELS = {
+  3005: { name: 'DPS3005', vmax: 30, imax: 5,   is: 1000, io: 100 },
+  5005: { name: 'DPS5005', vmax: 50, imax: 5,   is: 1000, io: 100 },
+  8005: { name: 'DPS8005', vmax: 80, imax: 5.1, is: 1000, io: 100 },
+  5205: { name: 'DPH5005', vmax: 50, imax: 5,   is: 1000, io: 100 },
+  3205: { name: 'DPH3205', vmax: 32, imax: 5,   is: 1000, io: 100, untested: true },
+  5015: { name: 'DPS5015', vmax: 50, imax: 15,  is: 100,  io: 100 },
+  5020: { name: 'DPS5020', vmax: 50, imax: 20,  is: 100,  io: 100 }
+};
+function applyModel(m) {
+  const sel = $('#modelSel').value;
+  if (sel !== 'auto') m = parseInt(sel, 10);
+  let d = MODELS[m];
+  if (!d) {
+    const vmax = Math.floor(m / 100), imax = m % 100, ok = m >= 1000 && m <= 9999 && vmax > 0 && imax > 0;
+    d = ok ? { name: 'DPS' + m, vmax, imax, is: imax <= 5 ? 1000 : 100, io: 100, untested: true } : { name: 'unknown (' + m + ')', vmax: 50, imax: 15, is: 100, io: 100, untested: true };
+    if (S.connected || S.t) toast(`Model register reports ${m}, which is not in the known list. Limits guessed as ${d.vmax} V / ${d.imax} A; choose the model manually if readings look wrong.`, true);
+  }
+  S.vmax = d.vmax; S.imax = d.imax; S.is = d.is; S.io = d.io;
+  ['#setI', '#pOCP'].forEach(s => $(s).step = 1 / S.is);
+  $('#setV').max = S.vmax; $('#setI').max = S.imax;
+  $('#modelInfo').textContent = `${d.name} · ${S.vmax} V / ${S.imax} A${S.version ? ' · fw ' + (S.version / 10).toFixed(1) : ''}${d.untested ? ' · untested model' : ''}${S.sim ? ' · simulated' : ''}`;
+}
+
+/* ============================== connection ============================== */
+function setStatus(kind, text) { const el = $('#status'); el.className = 'pill ' + (kind || ''); el.lastElementChild.textContent = text; }
+function setConnUI() {
+  $$('fieldset.needconn').forEach(f => f.disabled = !S.connected);
+  $('#btnConnect').textContent = S.connected && !S.sim ? 'Disconnect' : 'Connect';
+  $('#btnSim').textContent = S.connected && S.sim ? 'Stop simulator' : 'Simulator';
+  $('#btnConnect').disabled = S.connected && S.sim; $('#btnSim').disabled = S.connected && !S.sim;
+  $('#simRBox').hidden = !(S.connected && S.sim);
+  updateToolUI();
+}
+
+async function connect(sim) {
+  const baud = parseInt($('#baud').value, 10), addr = parseInt($('#addr').value, 10);
+  let t;
+  try {
+    if (sim) t = new SimTransport();
+    else {
+      if (!('serial' in navigator)) { toast('Web Serial is not available in this browser.', true); return; }
+      const port = await navigator.serial.requestPort();
+      t = new SerialTransport(port);
+    }
+    setStatus('warn', 'Connecting…');
+    await t.open(baud);
+  } catch (e) { setStatus('', 'Disconnected'); if (e.name !== 'NotFoundError') toast('Open failed: ' + e.message, true); return; }
+  S.t = t; S.sim = sim;
+  S.mb = new Modbus(t, addr, baud); S.mb.timeout = parseInt($('#timeout').value, 10) || 300;
+  try {
+    const [m, v] = await S.mb.read(REG.MODEL, 2, 'init');
+    S.model = m; S.version = v;
+  } catch (e) {
+    toast('No reply from the supply. Check baud rate, address, TX/RX wiring and that it is the communication version. (' + e.message + ')', true);
+    await t.close(); S.t = null; S.mb = null; setStatus('err', 'No reply'); return;
+  }
+  applyModel(S.model);
+  S.connected = true; S.needFill = true; S.failStreak = 0; S.prevProt = 0;
+  setStatus('ok', sim ? 'Simulator' : 'Connected');
+  setConnUI();
+  readProtection().catch(() => {});
+  poll();
+}
+
+async function disconnect(lost) {
+  S.stop = true; S.cut.armed = false; updateCutUI();
+  clearTimeout(S.pollTimer); S.connected = false;
+  const t = S.t; S.t = null;
+  if (t) { try { await t.close(); } catch {} }
+  setStatus(lost ? 'err' : '', lost ? 'Connection lost' : 'Disconnected');
+  setConnUI();
+}
+function onTransportLost(e) { toast('Serial error: ' + (e.message || e), true); if (S.connected) disconnect(true); }
+if ('serial' in navigator) {
+  navigator.serial.addEventListener('disconnect', e => { if (S.t && S.t.port === e.target) { toast('USB serial device unplugged', true); disconnect(true); } });
+} else $('#noSerial').classList.add('show');
+
+/* ============================== polling ============================== */
+async function poll() {
+  if (!S.connected) return;
+  try {
+    const r = await S.mb.read(0, 13, 'poll');
+    S.failStreak = 0; if (!S.sim) setStatus('ok', 'Connected');
+    onSample(r);
+  } catch (e) {
+    if (!S.connected) return;
+    S.failStreak++; if (S.failStreak >= 3) setStatus('err', 'No response');
+    updateStats();
+  } finally {
+    if (S.connected) S.pollTimer = setTimeout(poll, Math.max(100, parseInt($('#poll').value, 10) || 500));
+  }
+}
+
+function onSample(r) {
+  const now = performance.now();
+  const s = { uset: r[0] / S.vs, iset: r[1] / S.is, u: r[2] / S.vs, i: r[3] / S.io, uin: r[5] / S.vs, lock: !!r[6], prot: r[7], cc: !!r[8], on: !!r[9], bled: r[10] };
+  s.p = s.u * s.i;
+  if (S.lastT != null && s.on) { const dh = (now - S.lastT) / 3600000; S.ah += s.i * dh; S.wh += s.p * dh; }
+  S.lastT = now; S.last = s;
+  if (S.t0 == null) S.t0 = now;
+  s.t = (now - S.t0) / 1000;
+  if (s.on) {
+    S.min.u = Math.min(S.min.u ?? Infinity, s.u); S.max.u = Math.max(S.max.u ?? 0, s.u);
+    S.max.i = Math.max(S.max.i ?? 0, s.i); S.max.p = Math.max(S.max.p ?? 0, s.p);
+  }
+  S.rateWin.push(now); while (S.rateWin.length && now - S.rateWin[0] > 5000) S.rateWin.shift();
+
+  if (S.needFill) { $('#setV').value = fV(s.uset); $('#setI').value = fI(s.iset); S.needFill = false; }
+  if (s.prot && !S.prevProt) {
+    const msg = `${PROT[s.prot] || 'Protection'} tripped — output is off. Click to dismiss.`;
+    $('#protBanner').textContent = msg; $('#protBanner').classList.add('show'); toast(msg, true); beep();
+  }
+  S.prevProt = s.prot;
+
+  updateReadouts(s);
+  pushChart(s);
+  if (S.rec) {
+    S.recRows.push([new Date().toISOString(), s.t.toFixed(3), fV(s.uset), fI(s.iset), fV(s.u), fIo(s.i), s.p.toFixed(3), fV(s.uin), s.cc ? 'CC' : 'CV', s.on ? 1 : 0, PROT[s.prot] || s.prot, S.ah.toFixed(6), S.wh.toFixed(6)]);
+    $('#recInfo').textContent = S.recRows.length + ' rows';
+  }
+  checkCutoff(s, now);
+  updateStats();
+}
+
+function updateReadouts(s) {
+  $('#roU').textContent = fV(s.u); $('#roI').textContent = fIo(s.i); $('#roP').textContent = fP(s.p);
+  $('#roUset').textContent = fV(s.uset); $('#roIset').textContent = fI(s.iset); $('#roUin').textContent = fV(s.uin);
+  $('#roR').textContent = s.on && s.i > 0.005 ? (s.u / s.i).toFixed(2) : '--';
+  const bm = $('#bMode'); bm.textContent = s.on ? (s.cc ? 'CC' : 'CV') : 'IDLE'; bm.className = 'badge ' + (s.on ? (s.cc ? 'cc' : 'cv') : '');
+  const bp = $('#bProt'); bp.textContent = s.prot ? PROT[s.prot] || 'PROT ' + s.prot : 'PROT OK'; bp.className = 'badge ' + (s.prot ? 'bad' : 'ok');
+  $('#bLock').textContent = s.lock ? 'KEYS LOCKED' : 'KEYS FREE';
+  $('#btnLock').textContent = s.lock ? 'Unlock keys' : 'Lock keys';
+  const ob = $('#btnOut'); ob.textContent = s.on ? 'OUTPUT ON' : 'OUTPUT OFF'; ob.classList.toggle('on', s.on);
+  if (document.activeElement !== $('#bled')) { $('#bled').value = s.bled; $('#bledVal').textContent = s.bled; }
+  $('#lastUpd').textContent = new Date().toLocaleTimeString();
+}
+
+function updateStats() {
+  $('#stEl').textContent = fmtDur((performance.now() - S.cntT0) / 1000);
+  $('#stAh').textContent = S.ah.toFixed(4); $('#stWh').textContent = S.wh.toFixed(4);
+  $('#stUmin').textContent = S.min.u != null ? fV(S.min.u) : '--'; $('#stUmax').textContent = S.max.u != null ? fV(S.max.u) : '--';
+  $('#stImax').textContent = S.max.i != null ? fIo(S.max.i) : '--'; $('#stPmax').textContent = S.max.p != null ? fP(S.max.p) : '--';
+  const w = S.rateWin; $('#stRate').textContent = w.length > 1 ? ((w.length - 1) / ((w[w.length - 1] - w[0]) / 1000)).toFixed(1) : '--';
+  $('#stComm').textContent = `${S.comm.ok} / ${S.comm.err}`;
+}
+function resetCounters() { S.ah = 0; S.wh = 0; S.min = {}; S.max = {}; S.cntT0 = performance.now(); updateStats(); }
+
+/* ============================== chart ============================== */
+let chart = null;
+if (typeof Chart !== 'undefined') {
+  Chart.defaults.color = '#8b93a3'; Chart.defaults.borderColor = '#2a2f3a'; Chart.defaults.font.size = 11;
+  const ds = (label, color, axis, data) => ({ label, data, borderColor: color, backgroundColor: color, yAxisID: axis, pointRadius: 0, borderWidth: 1.6, tension: 0 });
+  chart = new Chart($('#chart'), {
+    type: 'line',
+    data: { datasets: [ds('U (V)', '#facc15', 'yV', S.cd.v), ds('I (A)', '#38bdf8', 'yI', S.cd.i), ds('P (W)', '#f472b6', 'yP', S.cd.p)] },
+    options: {
+      animation: false, parsing: false, normalized: true, responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+      plugins: { decimation: { enabled: true, algorithm: 'lttb', samples: 800 }, legend: { labels: { boxWidth: 12 } },
+        tooltip: { callbacks: { title: it => it.length ? it[0].parsed.x.toFixed(1) + ' s' : '' } } },
+      scales: {
+        x: { type: 'linear', title: { display: true, text: 'time (s)' } },
+        yV: { position: 'left', display: 'auto', title: { display: true, text: 'V', color: '#facc15' }, beginAtZero: true },
+        yI: { position: 'right', display: 'auto', title: { display: true, text: 'A', color: '#38bdf8' }, beginAtZero: true, grid: { drawOnChartArea: false } },
+        yP: { position: 'right', display: 'auto', title: { display: true, text: 'W', color: '#f472b6' }, beginAtZero: true, grid: { drawOnChartArea: false } }
+      }
+    }
+  });
+  chart.getDatasetMeta(2).hidden = true;
+} else $('#chartMsg').textContent = 'Chart library could not be loaded (offline?). Everything else works.';
+
+function pushChart(s) {
+  const c = S.cd, MAX = 60000;
+  c.v.push({ x: s.t, y: s.u }); c.i.push({ x: s.t, y: s.i }); c.p.push({ x: s.t, y: s.p });
+  if (c.v.length > MAX) { c.v.splice(0, 2000); c.i.splice(0, 2000); c.p.splice(0, 2000); }
+  if (!S.paused) redrawChart();
+}
+function redrawChart() {
+  if (!chart) return;
+  const win = parseInt($('#chWin').value, 10), last = S.cd.v.length ? S.cd.v[S.cd.v.length - 1].x : 0;
+  chart.options.scales.x.min = win ? Math.max(0, last - win) : undefined;
+  chart.options.scales.x.max = win ? Math.max(win, last) : undefined;
+  chart.update('none');
+}
+function clearChart() { S.cd.v.length = 0; S.cd.i.length = 0; S.cd.p.length = 0; S.t0 = null; redrawChart(); }
+
+/* ============================== setpoints & controls ============================== */
+function checkV(v) { if (!Number.isFinite(v) || v < 0 || v > S.vmax) throw new Error(`Voltage must be 0–${S.vmax} V`); return v; }
+function checkI(i) { if (!Number.isFinite(i) || i < 0 || i > S.imax) throw new Error(`Current must be 0–${S.imax} A`); return i; }
+async function guard(fn) { try { await fn(); } catch (e) { toast(e.message, true); } }
+const setV = v => S.mb.write(REG.USET, checkV(v) * S.vs);
+const setI = i => S.mb.write(REG.ISET, checkI(i) * S.is);
+const setOut = on => S.mb.write(REG.ONOFF, on ? 1 : 0);
+
+$('#btnApply').onclick = () => guard(() => S.mb.writeMany(0, [checkV(num('#setV')) * S.vs, checkI(num('#setI')) * S.is]));
+$('#setV').onkeydown = e => { if (e.key === 'Enter') guard(() => setV(num('#setV'))); };
+$('#setI').onkeydown = e => { if (e.key === 'Enter') guard(() => setI(num('#setI'))); };
+$$('.steps').forEach(box => box.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const isV = box.dataset.p === 'V', inp = isV ? $('#setV') : $('#setI'), max = isV ? S.vmax : S.imax;
+  const nv = Math.min(max, Math.max(0, (parseFloat(inp.value) || 0) + parseFloat(b.dataset.d)));
+  inp.value = isV ? fV(nv) : fI(nv);
+  guard(() => isV ? setV(nv) : setI(nv));
+}));
+$('#btnOut').onclick = () => guard(() => setOut(!(S.last && S.last.on)));
+$('#btnLock').onclick = () => guard(() => S.mb.write(REG.LOCK, S.last && S.last.lock ? 0 : 1));
+$('#bled').oninput = () => $('#bledVal').textContent = $('#bled').value;
+$('#bled').onchange = () => guard(() => S.mb.write(REG.BLED, parseInt($('#bled').value, 10)));
+$('#protBanner').onclick = () => $('#protBanner').classList.remove('show');
+
+async function readProtection() {
+  const [ovp, ocp, opp] = await S.mb.read(0x52, 3);
+  $('#pOVP').value = fV(ovp / S.vs); $('#pOCP').value = fI(ocp / S.is); $('#pOPP').value = (opp / S.ps).toFixed(1);
+}
+$('#btnProtRead').onclick = () => guard(readProtection);
+$('#btnProtWrite').onclick = () => guard(async () => {
+  const ovp = num('#pOVP'), ocp = num('#pOCP'), opp = num('#pOPP');
+  if (![ovp, ocp, opp].every(x => Number.isFinite(x) && x >= 0)) throw new Error('Enter OVP, OCP and OPP');
+  await S.mb.writeMany(0x52, [ovp * S.vs, ocp * S.is, opp * S.ps]);
+  await readProtection(); toast('Protection limits written');
+});
+
+async function emergencyOff() {
+  S.stop = true; S.cut.armed = false; updateCutUI();
+  if (!S.connected) return;
+  try { await S.mb.write(REG.ONOFF, 0); toast('Emergency: output OFF'); } catch (e) { toast('Emergency OFF failed: ' + e.message, true); }
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') emergencyOff(); });
+
+/* ============================== logging ============================== */
+$('#btnResetCnt').onclick = resetCounters;
+$('#btnRec').onclick = () => { S.rec = !S.rec; $('#btnRec').textContent = S.rec ? '■ Stop recording' : '● Record'; $('#btnRec').classList.toggle('danger', S.rec); };
+$('#btnClearRec').onclick = () => { S.recRows = []; $('#recInfo').textContent = '0 rows'; };
+$('#btnExportCsv').onclick = () => {
+  if (!S.recRows.length) { toast('Nothing recorded yet. Press Record first.', true); return; }
+  const head = 'timestamp,t_s,u_set_V,i_set_A,u_out_V,i_out_A,p_W,u_in_V,mode,output,protect,Ah,Wh';
+  download(`dps_log_${stamp()}.csv`, head + '\n' + S.recRows.map(r => r.join(',')).join('\n'), 'text/csv');
+};
+$('#chWin').onchange = () => { store.set('chWin', $('#chWin').value); redrawChart(); };
+$('#btnPause').onclick = () => { S.paused = !S.paused; $('#btnPause').textContent = S.paused ? 'Resume' : 'Pause'; if (!S.paused) redrawChart(); };
+$('#btnChClear').onclick = clearChart;
+
+/* ============================== tools ============================== */
+function startTool(name) {
+  if (!S.connected) { toast('Not connected', true); return false; }
+  if (S.tool) { toast(`"${S.tool}" is already running`, true); return false; }
+  S.tool = name; S.stop = false; updateToolUI(); return true;
+}
+function endTool() { S.tool = null; updateToolUI(); }
+function updateToolUI() {
+  ['#btnRamp', '#btnSeq'].forEach(s => $(s).disabled = !!S.tool);
+  $$('.toolstop').forEach(b => b.disabled = !S.tool);
+}
+$$('.toolstop').forEach(b => b.onclick = () => { S.stop = true; });
+async function sleepStop(ms) { const end = performance.now() + ms; while (!S.stop && performance.now() < end) await sleep(Math.min(50, end - performance.now())); }
+
+/* --- ramp / sweep --- */
+$('#btnRamp').onclick = async () => {
+  const par = $('#rpPar').value, a = num('#rpStart'), b = num('#rpEnd'), step = Math.abs(num('#rpStep')), dwell = num('#rpDwell');
+  try {
+    const chk = par === 'V' ? checkV : checkI; chk(a); chk(b);
+    if (!(step > 0) || !(dwell >= 100)) throw new Error('Step must be > 0 and dwell ≥ 100 ms');
+  } catch (e) { toast(e.message, true); return; }
+  if (!startTool('ramp')) return;
+  const span = Math.abs(b - a), n = Math.max(1, Math.ceil(span / step - 1e-9)), dir = Math.sign(b - a) || 1;
+  S.sweep = []; renderSweep();
+  try {
+    if ($('#rpOn').checked) await setOut(true);
+    for (let k = 0; k <= n && !S.stop; k++) {
+      const val = +(a + dir * Math.min(k * step, span)).toFixed(3);
+      await (par === 'V' ? setV(val) : setI(val));
+      $('#rpStatus').textContent = `Step ${k + 1}/${n + 1}: ${par === 'V' ? fV(val) + ' V' : fI(val) + ' A'}`;
+      $('#rpProg').style.width = (100 * (k + 1) / (n + 1)) + '%';
+      await sleepStop(dwell);
+      if (S.stop) break;
+      const r = await S.mb.read(0, 13, 'tool'); onSample(r);
+      const s = S.last; S.sweep.push([val, s.u, s.i, s.p, s.on ? (s.cc ? 'CC' : 'CV') : 'OFF']); renderSweep();
+    }
+    if (!S.stop && $('#rpOff').checked) await setOut(false);
+    $('#rpStatus').textContent = S.stop ? 'Stopped' : 'Done';
+  } catch (e) { toast('Ramp: ' + e.message, true); $('#rpStatus').textContent = 'Error: ' + e.message; }
+  finally { endTool(); }
+};
+function renderSweep() {
+  const p = $('#rpPar').value;
+  $('#swBody').innerHTML = S.sweep.map(r => `<tr><td>${p === 'V' ? fV(r[0]) : fI(r[0])}</td><td>${fV(r[1])}</td><td>${fIo(r[2])}</td><td>${fP(r[3])}</td><td>${r[4]}</td></tr>`).join('');
+  $('#swInfo').textContent = S.sweep.length + ' points';
+}
+$('#btnSwCsv').onclick = () => {
+  if (!S.sweep.length) { toast('No sweep data yet', true); return; }
+  download(`dps_sweep_${stamp()}.csv`, `set_${$('#rpPar').value},u_V,i_A,p_W,mode\n` + S.sweep.map(r => [r[0], fV(r[1]), fIo(r[2]), r[3].toFixed(3), r[4]].join(',')).join('\n'), 'text/csv');
+};
+
+/* --- sequence --- */
+function renderSeq() {
+  $('#sqBody').innerHTML = S.seq.map((s, k) => `<tr data-k="${k}">
+    <td>${k + 1}</td>
+    <td><input type="number" step="0.01" min="0" data-f="v" value="${s.v}"></td>
+    <td><input type="number" step="0.01" min="0" data-f="i" value="${s.i}"></td>
+    <td><select data-f="on"><option value="1"${s.on ? ' selected' : ''}>ON</option><option value="0"${s.on ? '' : ' selected'}>OFF</option></select></td>
+    <td><input type="number" step="0.1" min="0.1" data-f="d" value="${s.d}"></td>
+    <td><button data-a="up" title="Move up">↑</button> <button data-a="dn" title="Move down">↓</button> <button data-a="dup" title="Duplicate">⧉</button> <button data-a="del" title="Delete">✕</button></td></tr>`).join('');
+}
+$('#sqBody').addEventListener('change', e => {
+  const tr = e.target.closest('tr'), f = e.target.dataset.f; if (!tr || !f) return;
+  S.seq[+tr.dataset.k][f] = parseFloat(e.target.value) || 0; store.set('seq', S.seq);
+});
+$('#sqBody').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || S.tool === 'seq') return;
+  const k = +b.closest('tr').dataset.k, q = S.seq;
+  if (b.dataset.a === 'del') q.splice(k, 1);
+  if (b.dataset.a === 'dup') q.splice(k + 1, 0, { ...q[k] });
+  if (b.dataset.a === 'up' && k > 0) [q[k - 1], q[k]] = [q[k], q[k - 1]];
+  if (b.dataset.a === 'dn' && k < q.length - 1) [q[k + 1], q[k]] = [q[k], q[k + 1]];
+  store.set('seq', q); renderSeq();
+});
+$('#btnSqAdd').onclick = () => { const l = S.seq[S.seq.length - 1]; S.seq.push(l ? { ...l } : { v: 5, i: 1, on: 1, d: 5 }); store.set('seq', S.seq); renderSeq(); };
+$('#btnSqSave').onclick = () => download(`dps_sequence_${stamp()}.json`, JSON.stringify({ loops: parseInt($('#sqLoops').value, 10) || 0, steps: S.seq }, null, 2), 'application/json');
+$('#btnSqLoad').onclick = () => $('#sqFile').click();
+$('#sqFile').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const j = JSON.parse(await f.text()), steps = Array.isArray(j) ? j : j.steps;
+    if (!Array.isArray(steps)) throw new Error('No steps array');
+    S.seq = steps.map(s => ({ v: +s.v || 0, i: +s.i || 0, on: s.on ? 1 : 0, d: +s.d || 1 }));
+    if (j.loops != null) $('#sqLoops').value = j.loops;
+    store.set('seq', S.seq); renderSeq(); toast(`Loaded ${S.seq.length} steps`);
+  } catch (err) { toast('Load failed: ' + err.message, true); }
+  e.target.value = '';
+};
+function hlSeq(k) { $$('#sqBody tr').forEach(tr => tr.classList.toggle('cur', +tr.dataset.k === k)); }
+$('#btnSeq').onclick = async () => {
+  if (!S.seq.length) { toast('Sequence is empty', true); return; }
+  try { S.seq.forEach((s, k) => { try { checkV(s.v); checkI(s.i); } catch (e) { throw new Error(`Step ${k + 1}: ${e.message}`); } }); } catch (e) { toast(e.message, true); return; }
+  if (!startTool('seq')) return;
+  const loops = Math.max(0, parseInt($('#sqLoops').value, 10) || 0);
+  try {
+    for (let L = 0; (loops === 0 || L < loops) && !S.stop; L++) {
+      for (let k = 0; k < S.seq.length && !S.stop; k++) {
+        const st = S.seq[k]; hlSeq(k);
+        await S.mb.writeMany(0, [st.v * S.vs, st.i * S.is], 'tool');
+        await setOut(!!st.on);
+        const end = performance.now() + st.d * 1000;
+        while (!S.stop && performance.now() < end) {
+          $('#sqStatus').textContent = `Loop ${L + 1}${loops ? '/' + loops : ''} · step ${k + 1}/${S.seq.length} · ${fV(st.v)} V ${fI(st.i)} A ${st.on ? 'ON' : 'OFF'} · ${((end - performance.now()) / 1000).toFixed(1)} s left`;
+          await sleep(100);
+        }
+      }
+    }
+    if (!S.stop && $('#sqOffEnd').checked) await setOut(false);
+    $('#sqStatus').textContent = S.stop ? 'Stopped' : 'Finished';
+  } catch (e) { toast('Sequence: ' + e.message, true); $('#sqStatus').textContent = 'Error: ' + e.message; }
+  finally { hlSeq(-1); endTool(); }
+};
+
+/* --- auto cutoff --- */
+const CUT_FIELDS = ['cuI', 'cuIv', 'cuIt', 'cuGrace', 'cuU', 'cuUv', 'cuIm', 'cuImv', 'cuP', 'cuPv', 'cuT', 'cuTv', 'cuAh', 'cuAhv', 'cuWh', 'cuWhv', 'cuReset', 'cuBeep'];
+function saveCut() { const o = {}; CUT_FIELDS.forEach(id => { const el = $('#' + id); o[id] = el.type === 'checkbox' ? el.checked : el.value; }); store.set('cut', o); }
+function loadCut() { const o = store.get('cut', null); if (!o) return; CUT_FIELDS.forEach(id => { const el = $('#' + id); if (o[id] == null) return; if (el.type === 'checkbox') el.checked = o[id]; else el.value = o[id]; }); }
+CUT_FIELDS.forEach(id => $('#' + id).addEventListener('change', saveCut));
+function updateCutUI() {
+  const b = $('#cutArm'); b.textContent = S.cut.armed ? 'ARMED' : 'DISARMED'; b.className = 'badge ' + (S.cut.armed ? 'cc' : '');
+  $('#btnArm').textContent = S.cut.armed ? 'Disarm' : 'Arm';
+}
+$('#btnArm').onclick = () => {
+  if (S.cut.armed) { S.cut.armed = false; updateCutUI(); $('#cutStatus').textContent = 'Disarmed by user'; return; }
+  const any = ['cuI', 'cuU', 'cuIm', 'cuP', 'cuT', 'cuAh', 'cuWh'].some(id => $('#' + id).checked);
+  if (!any) { toast('Enable at least one condition', true); return; }
+  if ($('#cuReset').checked) resetCounters();
+  S.cut = { armed: true, t0: performance.now(), lowSince: null }; updateCutUI();
+  $('#cutStatus').textContent = 'Armed at ' + new Date().toLocaleTimeString() + (S.last && !S.last.on ? ' (output is off; conditions are checked only while it is on)' : '');
+};
+function checkCutoff(s, now) {
+  const C = S.cut; if (!C.armed) return;
+  const el = (now - C.t0) / 1000; $('#cutElapsed').textContent = fmtDur(el);
+  if (!s.on) { C.lowSince = null; return; }
+  const on = id => $('#' + id).checked, v = id => parseFloat($('#' + id).value);
+  let why = null;
+  if (on('cuI') && el >= v('cuGrace')) {
+    if (s.i < v('cuIv')) { C.lowSince ??= now; if ((now - C.lowSince) / 1000 >= v('cuIt')) why = `current below ${v('cuIv')} A for ${v('cuIt')} s`; }
+    else C.lowSince = null;
+  }
+  if (!why && on('cuU') && s.u >= v('cuUv')) why = `voltage reached ${fV(s.u)} V`;
+  if (!why && on('cuIm') && s.i >= v('cuImv')) why = `current reached ${fIo(s.i)} A`;
+  if (!why && on('cuP') && s.p >= v('cuPv')) why = `power reached ${fP(s.p)} W`;
+  if (!why && on('cuT') && el >= v('cuTv') * 60) why = `time ${fmtDur(el)} elapsed`;
+  if (!why && on('cuAh') && S.ah >= v('cuAhv')) why = `${S.ah.toFixed(4)} Ah delivered`;
+  if (!why && on('cuWh') && S.wh >= v('cuWhv')) why = `${S.wh.toFixed(4)} Wh delivered`;
+  if (why) triggerCutoff(why);
+}
+async function triggerCutoff(why) {
+  S.cut.armed = false; updateCutUI(); S.stop = true;
+  try { await setOut(false); } catch (e) { toast('Cutoff could not switch output off: ' + e.message, true); }
+  const msg = `Cutoff: ${why}. Output OFF at ${new Date().toLocaleTimeString()} · ${S.ah.toFixed(4)} Ah · ${S.wh.toFixed(4)} Wh`;
+  $('#cutStatus').textContent = msg; toast(msg);
+  if ($('#cuBeep').checked) beep();
+  try { if (document.hidden && 'Notification' in window && Notification.permission === 'granted') new Notification('DPS cutoff', { body: msg }); } catch {}
+}
+
+/* --- memory groups --- */
+function memCols() { return [['U', S.vs, 2], ['I', S.is, S.is === 1000 ? 3 : 2], ['OVP', S.vs, 2], ['OCP', S.is, S.is === 1000 ? 3 : 2], ['OPP', S.ps, 1], ['BLED', 1, 0]]; }
+function renderMem() {
+  const cols = memCols();
+  $('#memBody').innerHTML = Array.from({ length: 10 }, (_, g) => {
+    const m = S.mem[g];
+    const cells = cols.map((c, k) => `<td><input type="number" data-k="${k}" step="${1 / 10 ** c[2]}" value="${m ? (m[k] / c[1]).toFixed(c[2]) : ''}"></td>`).join('');
+    return `<tr data-g="${g}"><td><b>M${g}</b></td>${cells}<td><select data-k="7"><option value="0"${m && m[7] ? '' : ' selected'}>off</option><option value="1"${m && m[7] ? ' selected' : ''}>on</option></select></td>
+      <td><button data-a="w">Write</button> <button data-a="r">Recall</button></td></tr>`;
+  }).join('');
+}
+$('#btnMemRead').onclick = () => guard(async () => {
+  for (let g = 0; g < 10; g++) { S.mem[g] = await S.mb.read(0x50 + 16 * g, 8, 'tool'); }
+  renderMem(); toast('Read M0–M9');
+});
+$('#memBody').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const tr = b.closest('tr'), g = +tr.dataset.g;
+  if (b.dataset.a === 'r') return guard(async () => { await S.mb.write(REG.EXTRACT, g); S.needFill = true; await readProtection(); toast(`Recalled M${g}`); });
+  guard(async () => {
+    const cols = memCols(), vals = [];
+    for (let k = 0; k < 6; k++) { const x = parseFloat(tr.querySelector(`input[data-k="${k}"]`).value); if (!Number.isFinite(x) || x < 0) throw new Error(`M${g}: fill all fields (Read first)`); vals.push(x); }
+    checkV(vals[0]); checkI(vals[1]);
+    if (vals[5] > 5) throw new Error('Backlight is 0–5');
+    const raw = vals.map((x, k) => x * cols[k][1]);
+    raw.push(S.mem[g] ? S.mem[g][6] : g, parseInt(tr.querySelector('select[data-k="7"]').value, 10));
+    await S.mb.writeMany(0x50 + 16 * g, raw, 'tool');
+    S.mem[g] = await S.mb.read(0x50 + 16 * g, 8, 'tool'); renderMem();
+    if (g === 0) { S.needFill = true; await readProtection(); }
+    toast(`Wrote M${g}`);
+  });
+});
+
+/* --- console --- */
+$('#regMap').innerHTML = '<tr><th>Reg</th><th>Name</th><th>Meaning</th><th>R/W</th></tr>' + REGMAP.map(r => `<tr><td>0x${r[0].toString(16).padStart(2, '0').toUpperCase()}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('');
+$('#btnCnRead').onclick = () => guard(async () => {
+  const st = parseNum($('#cnRs').value), n = parseNum($('#cnRn').value);
+  if (n < 1 || n > 32) throw new Error('Count must be 1–32');
+  const r = await S.mb.read(st, n, 'con');
+  $('#cnOut').innerHTML = r.map((v, k) => `<tr><td>0x${(st + k).toString(16).padStart(2, '0').toUpperCase()}</td><td>${regName(st + k)}</td><td>0x${v.toString(16).padStart(4, '0').toUpperCase()}</td><td>${v}</td></tr>`).join('');
+});
+$('#btnCnWrite').onclick = () => guard(async () => {
+  const reg = parseNum($('#cnWr').value), v = parseNum($('#cnWv').value);
+  if (v < 0 || v > 65535) throw new Error('Value must be 0–65535');
+  await S.mb.write(reg, v, 'con'); toast(`Wrote ${v} to 0x${reg.toString(16).toUpperCase()}`);
+});
+$('#btnLogClear').onclick = () => $('#log').innerHTML = '';
+
+/* ============================== tabs, settings, init ============================== */
+$$('.tab').forEach(t => t.onclick = () => {
+  $$('.tab').forEach(x => x.classList.toggle('active', x === t));
+  $$('.pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + t.dataset.tab));
+});
+['baud', 'addr', 'poll', 'timeout', 'modelSel'].forEach(id => {
+  const el = $('#' + id), v = store.get(id, null); if (v != null) el.value = v;
+  el.addEventListener('change', () => {
+    store.set(id, el.value);
+    if (!S.mb) return;
+    if (id === 'addr') S.mb.addr = parseInt(el.value, 10) || 1;
+    if (id === 'timeout') S.mb.timeout = parseInt(el.value, 10) || 300;
+    if (id === 'modelSel') { applyModel(S.model); S.needFill = true; renderMem(); }
+    if (id === 'baud' && S.connected) toast('Reconnect to use the new baud rate');
+  });
+});
+$('#chWin').value = store.get('chWin', '60');
+$('#btnConnect').onclick = () => S.connected ? disconnect() : connect(false);
+$('#btnSim').onclick = () => S.connected ? disconnect() : connect(true);
+$('#btnArm').addEventListener('click', () => { try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch {} });
+setInterval(() => { if (S.connected) updateStats(); }, 1000);
+
+loadCut(); renderSeq(); renderMem(); updateCutUI(); setConnUI(); updateStats();
+</script>
+</body>
+</html>
