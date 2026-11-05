@@ -14,15 +14,15 @@ Both talk **Modbus RTU** directly to the supply; no vendor software is needed.
 
 The supply must be the **communication version** (sold with a USB or Bluetooth module, often labelled "USB/BT" or "CNC communication version"). Plain DPS units without the serial header cannot be controlled.
 
-| Model | Type | Range | MODEL reg (0x0B) | I-SET / S-OCP | IOUT | `dps-control.html` | `dps5015.py` |
+| Model | Type | Range | MODEL reg (0x0B) | I-SET / S-OCP | IOUT | `dps-control.html` | 
 |---|---|---|---|---|---|---|---|
-| **DPS5015** | Buck | 0–50 V, 0–15 A, 750 W | 5015 | ×100 (0.01 A) | ×100 | ✅ auto-detected | ✅ |
-| **DPS5020** | Buck | 0–50 V, 0–20 A, 1000 W | 5020 | ×100 | ×100 | ✅ auto-detected | ⚠️ edit `I_MAX = 20` |
-| **DPS3005** | Buck | 0–30 V, 0–5 A, 160 W | 3005 | ×1000 (0.001 A) | ×100 | ✅ auto-detected | ❌ wrong current scaling |
-| **DPS5005** | Buck | 0–50 V, 0–5 A, 250 W | 5005 | ×1000 | ×100 | ✅ auto-detected | ❌ wrong current scaling |
-| **DPS8005** | Buck | 0–80 V, 0–5.1 A, 408 W | 8005 | ×1000 | ×100 | ✅ auto-detected | ❌ wrong current scaling |
-| **DPH5005** | Buck/Boost | 0–50 V, 0–5 A, 250 W | **5205** | ×1000 | ×100 | ✅ auto-detected | ❌ wrong current scaling |
-| DPH3205 | Buck/Boost | 0–32 V, 0–5 A, 160 W | 3205 (expected) | ×1000 (expected) | ×100 | ⚠️ in model list, not confirmed by any source | ❌ |
+| **DPS5015** | Buck | 0–50 V, 0–15 A, 750 W | 5015 | ×100 (0.01 A) | ×100 | ✅ auto-detected | 
+| **DPS5020** | Buck | 0–50 V, 0–20 A, 1000 W | 5020 | ×100 | ×100 | ✅ auto-detected | 
+| **DPS3005** | Buck | 0–30 V, 0–5 A, 160 W | 3005 | ×1000 (0.001 A) | ×100 | ✅ auto-detected | 
+| **DPS5005** | Buck | 0–50 V, 0–5 A, 250 W | 5005 | ×1000 | ×100 | ✅ auto-detected | 
+| **DPS8005** | Buck | 0–80 V, 0–5.1 A, 408 W | 8005 | ×1000 | ×100 | ✅ auto-detected | 
+| **DPH5005** | Buck/Boost | 0–50 V, 0–5 A, 250 W | **5205** | ×1000 | ×100 | ✅ auto-detected | 
+| DPH3205 | Buck/Boost | 0–32 V, 0–5 A, 160 W | 3205 (expected) | ×1000 (expected) | ×100 | ⚠️ in model list, not confirmed by any source | 
 
 For other model numbers the HTML app guesses limits from the number (e.g. 5015 → 50 V / 15 A), shows "untested model" and lets you pick the model manually in the header.
 
