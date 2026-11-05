@@ -39,8 +39,26 @@ main{display:grid;grid-template-columns:minmax(340px,430px) 1fr;gap:12px;padding
 .badge{padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600;background:var(--panel2);border:1px solid var(--line)}
 .badge.cv{color:var(--v);border-color:#854d0e}.badge.cc{color:#fb923c;border-color:#9a3412}
 .badge.ok{color:var(--ok);border-color:#166534}.badge.bad{background:var(--bad);color:#fff;border-color:var(--bad)}
-.outbtn{width:100%;margin-top:10px;padding:12px;font-size:18px;font-weight:700;letter-spacing:.06em}
-.outbtn.on{background:#14532d;border-color:var(--ok);color:#bbf7d0}
+.outrow{display:flex;gap:10px;align-items:stretch;margin-top:10px}
+.outstate{flex:1;display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;background:#0b0d11;border:1px solid var(--line)}
+.outstate .lamp{width:18px;height:18px;border-radius:50%;background:#3a3f4b;flex:none;box-shadow:inset 0 0 0 2px #0006}
+.outstate .lbl{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.08em}
+.outstate .st{font-size:22px;font-weight:800;letter-spacing:.04em;line-height:1.1}
+.outstate .why{font-size:12px;color:var(--mute)}
+.outstate.on{border-color:var(--ok);background:#052e16}
+.outstate.on .lamp{background:var(--ok);box-shadow:0 0 12px 3px #22c55e99}
+.outstate.on .st{color:#86efac}
+.outstate.tripped{border-color:var(--bad);background:#2a0b0b}
+.outstate.tripped .lamp{background:var(--bad);box-shadow:0 0 12px 3px #ef444499}
+.outstate.tripped .st{color:#fca5a5}
+.outbtn{min-width:150px;padding:10px 16px;font-size:16px;font-weight:700;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.outbtn small{font-size:11px;font-weight:500;opacity:.85}
+.outbtn.turnon{background:#15803d;border-color:#22c55e;color:#fff}
+.outbtn.turnoff{background:#b91c1c;border-color:#ef4444;color:#fff}
+.outbtn.busy{opacity:.6;cursor:progress}
+section.card.live{border-color:#166534}
+.simbox[hidden]{display:none}
+fieldset:disabled .outbtn{background:var(--panel2);border-color:var(--line);color:var(--mute)}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}
 .grid2{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center}
 .steps{display:flex;gap:4px;flex-wrap:wrap}
@@ -120,7 +138,10 @@ input.dirty{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset}
       <div class="ro i"><div><span class="val" id="roI">-.--</span><span class="unit">A</span></div><div class="sub">set <span id="roIset">--</span> A</div></div>
       <div class="ro p"><div><span class="val" id="roP">--.--</span><span class="unit">W</span></div><div class="sub">R<sub>load</sub> <span id="roR">--</span> Ω</div></div>
       <div class="badges"><span class="badge" id="bMode">--</span><span class="badge" id="bProt">--</span><span class="badge" id="bLock">--</span></div>
-      <fieldset class="needconn" disabled><button class="outbtn" id="btnOut">OUTPUT OFF</button></fieldset>
+      <div class="outrow">
+        <div class="outstate" id="outState" aria-live="polite"><span class="lamp"></span><div><div class="lbl">Output is</div><div class="st" id="outSt">—</div><div class="why" id="outWhy">not connected</div></div></div>
+        <fieldset class="needconn" disabled style="display:flex"><button class="outbtn turnon" id="btnOut"><span id="outAct">▶ Turn ON</span><small id="outActSub">apply voltage to the terminals</small></button></fieldset>
+      </div>
       <div class="simbox" id="simRBox" hidden>Simulated load <input id="simRr" type="range" min="0" max="100" step="1" value="45"><input id="simR" type="number" value="8" step="0.5" min="0.1" style="width:70px"> Ω</div>
       <div class="muted" style="margin-top:6px">Esc = emergency output OFF and stop all tools</div>
     </section>
@@ -660,6 +681,8 @@ async function disconnect(lost) {
   if (t) { try { await t.close(); } catch {} }
   setStatus(lost ? 'err' : '', lost ? 'Connection lost' : 'Disconnected');
   document.title = 'DPS Control';
+  $('#outState').className = 'outstate'; $('#outSt').textContent = '—'; $('#outWhy').textContent = 'not connected';
+  $('#outState').closest('section').classList.remove('live');
   $$('.ro').forEach(e => e.classList.remove('stale'));
   setConnUI(); updateKeepAwake();
 }
@@ -744,9 +767,26 @@ function updateReadouts(s) {
   const bp = $('#bProt'); bp.textContent = s.prot ? PROT[s.prot] || 'PROT ' + s.prot : 'PROT OK'; bp.className = 'badge ' + (s.prot ? 'bad' : 'ok');
   $('#bLock').textContent = s.lock ? 'KEYS LOCKED' : 'KEYS FREE';
   $('#btnLock').textContent = s.lock ? 'Unlock keys' : 'Lock keys';
-  const ob = $('#btnOut'); ob.textContent = s.on ? 'OUTPUT ON' : 'OUTPUT OFF'; ob.classList.toggle('on', s.on);
+  updateOutSwitch(s);
   if (document.activeElement !== $('#bled')) { $('#bled').value = s.bled; $('#bledVal').textContent = s.bled; }
   $('#lastUpd').textContent = new Date().toLocaleTimeString();
+}
+
+/* Output switch: the panel shows the STATE, the button names the ACTION it will perform. */
+function updateOutSwitch(s) {
+  const st = $('#outState'), tripped = !s.on && s.prot;
+  st.classList.toggle('on', s.on); st.classList.toggle('tripped', !!tripped);
+  $('#outSt').textContent = s.on ? 'ON' : 'OFF';
+  $('#outWhy').textContent = s.on ? `${fV(s.u)} V · ${fIo(s.i)} A · ${s.cc ? 'current limited (CC)' : 'constant voltage (CV)'}`
+    : tripped ? `switched off by ${PROT[s.prot]} protection` : `no voltage on the terminals · set ${fV(s.uset)} V / ${fI(s.iset)} A`;
+  const b = $('#btnOut');
+  if (!b.classList.contains('busy')) {
+    b.classList.toggle('turnon', !s.on); b.classList.toggle('turnoff', s.on);
+    $('#outAct').textContent = s.on ? '■ Turn OFF' : '▶ Turn ON';
+    $('#outActSub').textContent = s.on ? 'disconnect the load' : `output ${fV(s.uset)} V, max ${fI(s.iset)} A`;
+    b.title = s.on ? 'Switch the output off (Esc also works)' : `Switch the output on at ${fV(s.uset)} V with a ${fI(s.iset)} A current limit`;
+  }
+  $('#outState').closest('section').classList.toggle('live', s.on);
 }
 
 function updateStats() {
@@ -815,7 +855,14 @@ $$('.steps').forEach(box => box.addEventListener('click', e => {
   inp.value = isV ? fV(nv) : fI(nv);
   guard(() => isV ? setV(nv) : setI(nv));
 }));
-$('#btnOut').onclick = () => guard(() => setOut(!(S.last && S.last.on)));
+$('#btnOut').onclick = () => guard(async () => {
+  const b = $('#btnOut'), turnOn = !(S.last && S.last.on);
+  b.classList.add('busy'); b.disabled = true; $('#outAct').textContent = turnOn ? 'Switching on…' : 'Switching off…';
+  try {
+    await setOut(turnOn);
+    const r = await S.mb.read(0, 13, 'tool'); onSample(r);
+  } finally { b.classList.remove('busy'); b.disabled = false; if (S.last) updateOutSwitch(S.last); }
+});
 $('#btnLock').onclick = () => guard(() => S.mb.write(REG.LOCK, S.last && S.last.lock ? 0 : 1));
 $('#bled').oninput = () => $('#bledVal').textContent = $('#bled').value;
 $('#bled').onchange = () => guard(() => S.mb.write(REG.BLED, parseInt($('#bled').value, 10)));
