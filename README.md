@@ -5,7 +5,6 @@ Two ways to control a DPS-series programmable power module from a PC over its se
 | File | What it is | Needs |
 |---|---|---|
 | `dps-control.html` | Full browser app: live readout, chart, logging, ramp/I-V sweep, sequences, auto cutoff, memory groups M0–M9, raw Modbus console, simulator | Desktop **Chrome or Edge** (Web Serial). Nothing to install. |
-| `dps5015.py` | Command-line tool + Python class | Python 3.9+, `pip install pyserial` |
 
 Both talk **Modbus RTU** directly to the supply; no vendor software is needed.
 
@@ -78,20 +77,6 @@ For other model numbers the HTML app guesses limits from the number (e.g. 5015 �
 
 No hardware at hand? Click **Simulator** — it emulates a DPS5015 with an adjustable resistive load.
 
-### Python
-
-```
-pip install pyserial
-python dps5015.py -p COM5 status
-python dps5015.py -p COM5 set -v 12 -i 2.5
-python dps5015.py -p COM5 on
-python dps5015.py -p COM5 monitor --interval 1 --csv log.csv
-```
-
-`python dps5015.py -h` lists all commands (status, set, on, off, lock, unlock, backlight, preset, protect, ramp, monitor).
-
----
-
 ## Register map (verified)
 
 ✅ = the protocol document and rdserialtool agree · ⚠️ = sources differ, see notes
@@ -150,9 +135,5 @@ Other corrections from the document: CV/CC lists "CV" for both values (1 is CC);
 
 - DPS3005 CNC Communication Protocol V1.2 (RD Tech): https://wpsodp.ee.ntust.edu.tw/chapter_02/DPS3005%20CNC%20Communication%20%20Protocol%20V1.2.pdf
 - DPS5020 communication protocol, English translation V1.2: https://redmine.laas.fr/attachments/download/4753/DPS5020communication%20protocol%20-english%20translation%20V1.2.pdf
-- sigrok wiki – RDTech DPS series (models, baud, setup menu): https://sigrok.org/wiki/RDTech_DPS_series
-- rdserialtool (register map, DPS model list): https://uithub.com/Black-FX/rdserialtool
-- esphome-dps (supported models, DPH5005 = 5205, wiring, connector): https://github.com/syssi/esphome-dps
-- pyDPS5015: https://github.com/haarer/pyDPS5015
 - Riden RD60xx Modbus protocol (to show it is a different map): https://www.joy-it.net/files/files/Produkte/JT-PS1440-C-Pro/MODBUS_Protocol_RD60xx_PSxx.pdf
 
