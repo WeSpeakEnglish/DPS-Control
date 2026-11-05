@@ -1,0 +1,63 @@
+{
+  "_comment": "Device list for dps-control.html. Edit freely: the page builds its Device dropdown from this file. 'model' is the value of register 0x0B used for auto-detection. Scales are the register multipliers (value = register / scale). 'appLimits' are soft limits enforced by the page for the protection fields, not device specifications.",
+  "schema": 1,
+  "defaults": {
+    "baud": 9600,
+    "address": 1,
+    "bauds": [2400, 4800, 9600, 19200],
+    "pollMs": 500,
+    "timeoutMs": 300
+  },
+  "devices": [
+    {
+      "id": "DPS5015", "model": 5015, "type": "Buck", "verified": true,
+      "vMax": 50, "iMax": 15, "pMax": 750,
+      "scale": { "v": 100, "iSet": 100, "iOut": 100, "opp": 10 },
+      "baud": 9600, "address": 1,
+      "appLimits": { "ovp": 52, "ocp": 15.5, "opp": 760 }
+    },
+    {
+      "id": "DPS5020", "model": 5020, "type": "Buck", "verified": true,
+      "vMax": 50, "iMax": 20, "pMax": 1000,
+      "scale": { "v": 100, "iSet": 100, "iOut": 100, "opp": 10 },
+      "baud": 9600, "address": 1,
+      "appLimits": { "ovp": 52, "ocp": 20.5, "opp": 1010 }
+    },
+    {
+      "id": "DPS3005", "model": 3005, "type": "Buck", "verified": true,
+      "vMax": 30, "iMax": 5, "pMax": 160,
+      "scale": { "v": 100, "iSet": 1000, "iOut": 100, "opp": 10 },
+      "baud": 9600, "address": 1,
+      "appLimits": { "ovp": 32, "ocp": 5.2, "opp": 170 }
+    },
+    {
+      "id": "DPS5005", "model": 5005, "type": "Buck", "verified": true,
+      "vMax": 50, "iMax": 5, "pMax": 250,
+      "scale": { "v": 100, "iSet": 1000, "iOut": 100, "opp": 10 },
+      "baud": 9600, "address": 1,
+      "appLimits": { "ovp": 52, "ocp": 5.2, "opp": 260 }
+    },
+    {
+      "id": "DPS8005", "model": 8005, "type": "Buck", "verified": true,
+      "vMax": 80, "iMax": 5.1, "pMax": 408,
+      "scale": { "v": 100, "iSet": 1000, "iOut": 100, "opp": 10 },
+      "baud": 9600, "address": 1,
+      "appLimits": { "ovp": 82, "ocp": 5.3, "opp": 420 }
+    },
+    {
+      "id": "DPH5005", "model": 5205, "type": "Buck/Boost", "verified": true,
+      "vMax": 50, "iMax": 5, "pMax": 250,
+      "scale": { "v": 100, "iSet": 1000, "iOut": 100, "opp": 10 },
+      "baud": 9600, "address": 1,
+      "appLimits": { "ovp": 52, "ocp": 5.2, "opp": 260 }
+    },
+    {
+      "id": "DPH3205", "model": 3205, "type": "Buck/Boost", "verified": false,
+      "vMax": 32, "iMax": 5, "pMax": 160,
+      "scale": { "v": 100, "iSet": 1000, "iOut": 100, "opp": 10 },
+      "baud": 9600, "address": 1,
+      "appLimits": { "ovp": 34, "ocp": 5.2, "opp": 170 },
+      "notes": "Model register value and scaling not confirmed by any source"
+    }
+  ]
+}

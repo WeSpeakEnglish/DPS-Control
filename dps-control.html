@@ -16,7 +16,7 @@ header h1{font-size:16px;margin:0 6px 0 0;font-weight:650}
 .pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-size:12px}
 .pill i{width:8px;height:8px;border-radius:50%;background:var(--mute)}
 .pill.ok i{background:var(--ok)}.pill.warn i{background:var(--warn)}.pill.err i{background:var(--bad)}
-label.f{display:flex;align-items:center;gap:6px;color:var(--mute);font-size:12px}
+.f{display:flex;align-items:center;gap:6px;color:var(--mute);font-size:12px}
 input,select,button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
 input[type=number]{width:90px}
 input[type=range]{padding:0;accent-color:var(--acc)}
@@ -71,9 +71,20 @@ tr.cur td{background:#312e81}
 .muted{color:var(--mute);font-size:12px}
 .full{grid-column:1/-1}
 .split{display:grid;grid-template-columns:minmax(300px,1fr) minmax(300px,1fr);gap:16px}
-#toast{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:6px;z-index:10}
-#toast div{background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--acc);padding:8px 12px;border-radius:6px;max-width:380px;box-shadow:0 4px 16px #0008}
+#toast{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);display:flex;flex-direction:column-reverse;align-items:center;gap:6px;z-index:10;pointer-events:none}
+#toast div{pointer-events:auto;cursor:pointer;background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--acc);padding:7px 12px;border-radius:6px;max-width:min(520px,92vw);box-shadow:0 4px 16px #0009;font-size:13px}
 #toast div.err{border-left-color:var(--bad)}
+.settings{display:none;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:10px 16px;background:var(--panel2);border-bottom:1px solid var(--line)}
+.settings.show{display:flex}
+#devLimits{flex-basis:100%}
+#btnSettings.active{border-color:var(--acc)}
+.grid2>select,.grid2>input{justify-self:start}
+.grid2>select{min-width:160px}
+input.dirty{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset}
+.simbox{display:flex;align-items:center;gap:8px;margin-top:8px;padding:6px 10px;border:1px dashed #4f46e5;border-radius:8px;font-size:12px;color:var(--mute)}
+.simbox input[type=range]{flex:1}
+.ro.stale .val{opacity:.35}
+.ro.stale::after{content:'stale';font-size:11px;color:var(--warn);margin-left:8px}
 @media(max-width:1000px){main{grid-template-columns:1fr}.split{grid-template-columns:1fr}}
 </style>
 </head>
@@ -83,15 +94,21 @@ tr.cur td{background:#312e81}
   <span class="pill" id="status"><i></i><span>Disconnected</span></span>
   <span id="modelInfo" class="muted"></span>
   <div class="spacer"></div>
-  <label class="f">Baud <select id="baud"><option>2400</option><option>4800</option><option selected>9600</option><option>19200</option></select></label>
-  <label class="f">Addr <input id="addr" type="number" min="1" max="255" value="1" style="width:60px"></label>
-  <label class="f">Poll ms <input id="poll" type="number" min="100" max="10000" step="50" value="500" style="width:72px"></label>
-  <label class="f">Timeout ms <input id="timeout" type="number" min="50" max="3000" step="50" value="300" style="width:72px"></label>
-  <label class="f">Model <select id="modelSel"><option value="auto">Auto</option><option value="3005">DPS3005</option><option value="5005">DPS5005</option><option value="8005">DPS8005</option><option value="5205">DPH5005</option><option value="3205">DPH3205</option><option value="5015">DPS5015</option><option value="5020">DPS5020</option></select></label>
-  <label class="f" id="simRBox" hidden>Sim load Ω <input id="simR" type="number" value="8" step="0.5" min="0.1" style="width:64px"></label>
+  <button id="btnSettings" title="Connection settings">⚙ Settings</button>
   <button id="btnConnect" class="primary">Connect</button>
   <button id="btnSim">Simulator</button>
 </header>
+<fieldset class="settings" id="settings">
+  <label class="f">Device <select id="devSel"><option value="auto">Auto-detect</option></select></label>
+  <label class="f">Baud <select id="baud"><option>9600</option></select></label>
+  <label class="f">Addr <input id="addr" type="number" min="1" max="255" value="1" style="width:60px"></label>
+  <label class="f">Poll ms <input id="poll" type="number" min="100" max="10000" step="50" value="500" style="width:72px"></label>
+  <label class="f">Timeout ms <input id="timeout" type="number" min="50" max="3000" step="50" value="300" style="width:72px"></label>
+  <label class="f"><input type="checkbox" id="rememberPort" checked> Reconnect to last port without asking</label>
+  <span class="f"><span class="muted" id="devSrc">Device list: built-in</span><button id="btnDevLoad" title="Load a devices.json file">Load devices.json…</button><button id="btnDevReset" title="Forget a loaded list and use the built-in one">Reset</button><input type="file" id="devFile" accept=".json,application/json" hidden></span>
+  <span class="muted" id="devLimits"></span>
+  <span class="muted" id="setHint">Baud rate changes need a reconnect. Settings are locked while a tool is running.</span>
+</fieldset>
 <div class="banner" id="noSerial">Web Serial isn't available here. Use desktop Chrome or Edge and open this file directly (file://) or from http://localhost. The Simulator still works.</div>
 <div class="banner" id="protBanner" title="Click to dismiss">Protection tripped</div>
 
@@ -104,6 +121,7 @@ tr.cur td{background:#312e81}
       <div class="ro p"><div><span class="val" id="roP">--.--</span><span class="unit">W</span></div><div class="sub">R<sub>load</sub> <span id="roR">--</span> Ω</div></div>
       <div class="badges"><span class="badge" id="bMode">--</span><span class="badge" id="bProt">--</span><span class="badge" id="bLock">--</span></div>
       <fieldset class="needconn" disabled><button class="outbtn" id="btnOut">OUTPUT OFF</button></fieldset>
+      <div class="simbox" id="simRBox" hidden>Simulated load <input id="simRr" type="range" min="0" max="100" step="1" value="45"><input id="simR" type="number" value="8" step="0.5" min="0.1" style="width:70px"> Ω</div>
       <div class="muted" style="margin-top:6px">Esc = emergency output OFF and stop all tools</div>
     </section>
 
@@ -116,9 +134,9 @@ tr.cur td{background:#312e81}
           <span>Current</span><div class="row" style="margin:0"><input id="setI" type="number" step="0.01" min="0" value="0"> A</div>
           <span></span><div class="steps" data-p="I"><button data-d="-1">−1</button><button data-d="-0.1">−0.1</button><button data-d="-0.01">−0.01</button><button data-d="0.01">+0.01</button><button data-d="0.1">+0.1</button><button data-d="1">+1</button></div>
         </div>
-        <div class="row" style="margin-top:10px"><button class="primary" id="btnApply">Apply V &amp; I</button><button id="btnLock">Lock keys</button></div>
+        <div class="row" style="margin-top:10px"><button class="primary" id="btnApply">Apply V &amp; I</button><button id="btnSync" title="Load the supply's current setpoints into the fields">⟳ Sync from supply</button><button id="btnLock">Lock keys</button></div>
         <div class="row"><span class="muted">Backlight</span><input id="bled" type="range" min="0" max="5" step="1" value="3"><span id="bledVal" class="muted">3</span></div>
-        <div class="muted">Enter in a field applies it. Step buttons apply immediately.</div>
+        <div class="muted">Enter in a field applies it. Step buttons apply immediately. An orange field holds a value not yet sent to the supply.</div>
       </fieldset>
     </section>
 
@@ -255,6 +273,7 @@ tr.cur td{background:#312e81}
 </main>
 <div id="toast"></div>
 
+<script type="application/json" id="devicesBuiltin">{"_comment":"Device list for dps-control.html. Edit freely: the page builds its Device dropdown from this file. 'model' is the value of register 0x0B used for auto-detection. Scales are the register multipliers (value = register / scale). 'appLimits' are soft limits enforced by the page for the protection fields, not device specifications.","schema":1,"defaults":{"baud":9600,"address":1,"bauds":[2400,4800,9600,19200],"pollMs":500,"timeoutMs":300},"devices":[{"id":"DPS5015","model":5015,"type":"Buck","verified":true,"vMax":50,"iMax":15,"pMax":750,"scale":{"v":100,"iSet":100,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":52,"ocp":15.5,"opp":760}},{"id":"DPS5020","model":5020,"type":"Buck","verified":true,"vMax":50,"iMax":20,"pMax":1000,"scale":{"v":100,"iSet":100,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":52,"ocp":20.5,"opp":1010}},{"id":"DPS3005","model":3005,"type":"Buck","verified":true,"vMax":30,"iMax":5,"pMax":160,"scale":{"v":100,"iSet":1000,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":32,"ocp":5.2,"opp":170}},{"id":"DPS5005","model":5005,"type":"Buck","verified":true,"vMax":50,"iMax":5,"pMax":250,"scale":{"v":100,"iSet":1000,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":52,"ocp":5.2,"opp":260}},{"id":"DPS8005","model":8005,"type":"Buck","verified":true,"vMax":80,"iMax":5.1,"pMax":408,"scale":{"v":100,"iSet":1000,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":82,"ocp":5.3,"opp":420}},{"id":"DPH5005","model":5205,"type":"Buck/Boost","verified":true,"vMax":50,"iMax":5,"pMax":250,"scale":{"v":100,"iSet":1000,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":52,"ocp":5.2,"opp":260}},{"id":"DPH3205","model":3205,"type":"Buck/Boost","verified":false,"vMax":32,"iMax":5,"pMax":160,"scale":{"v":100,"iSet":1000,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":34,"ocp":5.2,"opp":170},"notes":"Model register value and scaling not confirmed by any source"}]}</script>
 <script>
 'use strict';
 /* ============================== helpers ============================== */
@@ -265,8 +284,10 @@ const store = {
   set(k, v) { try { localStorage.setItem('dps.' + k, JSON.stringify(v)); } catch {} }
 };
 function toast(msg, err) {
-  const d = document.createElement('div'); if (err) d.className = 'err'; d.textContent = msg;
-  $('#toast').appendChild(d); setTimeout(() => d.remove(), err ? 7000 : 3500);
+  const box = $('#toast'), d = document.createElement('div'); if (err) d.className = 'err'; d.textContent = msg; d.title = 'Click to dismiss';
+  d.onclick = () => d.remove(); box.prepend(d);
+  while (box.childElementCount > 3) box.lastElementChild.remove();
+  setTimeout(() => d.remove(), err ? 6000 : 2500);
 }
 function num(sel) { return parseFloat($(sel).value); }
 function parseNum(s) { s = String(s).trim(); const n = /^0x/i.test(s) ? parseInt(s, 16) : parseInt(s, 10); if (!Number.isFinite(n)) throw new Error('Bad number: ' + s); return n; }
@@ -361,28 +382,39 @@ class SerialTransport {
 }
 
 /* Simulated DPS5015 with a resistive load, for trying the UI without hardware */
+/* Simulated supply. Follows the model chosen in Settings (Auto = DPS5015), uses that model's register scaling,
+   slews the output like a real regulator (~0.25 s), adds noise and drops ~1 % of frames to exercise retries. */
 class SimTransport {
-  constructor() {
+  constructor(d) {
+    this.d = d; this.uAct = 0; this.iAct = 0; this.lastT = performance.now();
     const r = this.r = new Array(0x50 + 0x10 * 10).fill(0);
-    r[REG.MODEL] = 5015; r[REG.VERSION] = 17; r[REG.UIN] = 5520; r[REG.BLED] = 4;
-    for (let g = 0; g < 10; g++) { const b = 0x50 + 16 * g; [500 + g * 100, 100 + g * 10, 5200, 1550, 7800, 4, g, 0].forEach((v, k) => r[b + k] = v); }
+    r[REG.MODEL] = d.model; r[REG.VERSION] = 17; r[REG.BLED] = 4;
+    this.uin = (d.vmax + 5) * 100; r[REG.UIN] = this.uin;
+    for (let g = 0; g < 10; g++) {
+      const b = 0x50 + 16 * g, uv = Math.min(d.vmax, 5 + g), ia = Math.min(d.imax, 1 + g * 0.1);
+      [uv * 100, ia * d.is, (d.vmax + 2) * 100, (d.imax + 0.5) * d.is, d.vmax * d.imax * 10 + 50, 4, g, 0].forEach((v, k) => r[b + k] = Math.round(v));
+    }
     r[0] = r[0x50]; r[1] = r[0x51];
   }
   async open(baud) { this.baud = baud; }
   async close() {}
   physics() {
-    const r = this.r, R = Math.max(0.05, parseFloat($('#simR').value) || 8);
-    if (!r[REG.ONOFF]) { r[2] = 0; r[3] = 0; r[4] = 0; r[8] = 0; return; }
-    const uset = r[0] / 100, iset = r[1] / 100;
-    let u = uset, i = u / R, cc = false;
-    if (i > iset) { i = iset; u = i * R; cc = true; }
-    u = Math.max(0, u + (Math.random() - 0.5) * 0.02); i = Math.max(0, i + (Math.random() - 0.5) * 0.01);
-    const p = u * i;
-    let prot = 0;
-    if (u > r[0x52] / 100) prot = 1; else if (i > r[0x53] / 100) prot = 2; else if (p > r[0x54] / 10) prot = 3;
-    if (prot) { r[7] = prot; r[9] = 0; r[2] = 0; r[3] = 0; r[4] = 0; r[8] = 0; return; }
-    r[2] = Math.round(u * 100); r[3] = Math.round(i * 100); r[4] = Math.round(p * (p < 100 ? 100 : 10)); r[8] = cc ? 1 : 0;
-    r[5] = 5520 - Math.round(p / 3);
+    const r = this.r, d = this.d, R = Math.max(0.05, parseFloat($('#simR').value) || 8);
+    const now = performance.now(), k = 1 - Math.exp(-(now - this.lastT) / 250); this.lastT = now;
+    let ut = 0, cc = false;
+    if (r[REG.ONOFF]) {
+      const uset = r[0] / 100, iset = r[1] / d.is;
+      ut = uset; if (ut / R > iset) { ut = iset * R; cc = true; }
+    }
+    this.uAct += (ut - this.uAct) * k;
+    const u = Math.max(0, this.uAct + (r[REG.ONOFF] ? (Math.random() - 0.5) * 0.02 : 0)), i = u / R, p = u * i;
+    if (r[REG.ONOFF]) {
+      let prot = 0;
+      if (u > r[0x52] / 100) prot = 1; else if (i > r[0x53] / d.is) prot = 2; else if (p > r[0x54] / 10) prot = 3;
+      if (prot) { r[7] = prot; r[9] = 0; }
+    }
+    r[2] = Math.round(u * 100); r[3] = Math.round(i * 100); r[4] = Math.round(p * (p < 100 ? 100 : 10));
+    r[8] = r[9] && cc ? 1 : 0; r[5] = this.uin - Math.round(p / 3);
   }
   writable(reg) { return [0, 1, 6, 9, 10, 0x23].includes(reg) || (reg >= 0x50 && reg < this.r.length); }
   set(reg, v) {
@@ -415,6 +447,7 @@ class SimTransport {
     return this.exc(a, fc, 1);
   }
   async exchange(frame, expect, timeout) {
+    if (Math.random() < 0.01) { await sleep(timeout); return new Uint8Array(0); }
     const resp = this.handle(frame);
     await sleep(4 + (frame.length + resp.length) * 11000 / this.baud);
     return resp;
@@ -475,30 +508,94 @@ const S = {
 /* fI: current setpoints (I-SET, S-OCP). fIo: measured current (IOUT). */
 const fV = v => v.toFixed(2), fI = i => i.toFixed(S.is === 1000 ? 3 : 2), fIo = i => i.toFixed(S.io === 1000 ? 3 : 2), fP = p => p.toFixed(p >= 100 ? 1 : 2);
 
-/* Value the MODEL register (0x0B) reports -> name, limits, current scaling.
-   is = I-SET / S-OCP scale, io = IOUT scale (protocol doc + rdserialtool: IOUT has 2 decimals on every model). */
-const MODELS = {
-  3005: { name: 'DPS3005', vmax: 30, imax: 5,   is: 1000, io: 100 },
-  5005: { name: 'DPS5005', vmax: 50, imax: 5,   is: 1000, io: 100 },
-  8005: { name: 'DPS8005', vmax: 80, imax: 5.1, is: 1000, io: 100 },
-  5205: { name: 'DPH5005', vmax: 50, imax: 5,   is: 1000, io: 100 },
-  3205: { name: 'DPH3205', vmax: 32, imax: 5,   is: 1000, io: 100, untested: true },
-  5015: { name: 'DPS5015', vmax: 50, imax: 15,  is: 100,  io: 100 },
-  5020: { name: 'DPS5020', vmax: 50, imax: 20,  is: 100,  io: 100 }
-};
+/* ============================== device list (devices.json) ============================== */
+let DEV = { defaults: {}, list: [], src: 'built-in' };
+function normDevice(d, def) {
+  const need = ['id', 'model', 'vMax', 'iMax'];
+  need.forEach(k => { if (d[k] == null) throw new Error(`device ${d.id || '?'}: missing "${k}"`); });
+  const sc = d.scale || {}, lim = d.appLimits || {};
+  const iSet = +sc.iSet || (d.iMax <= 5.1 ? 1000 : 100);
+  const o = {
+    id: String(d.id), name: d.name || String(d.id), model: +d.model, type: d.type || '', verified: d.verified !== false, notes: d.notes || '',
+    vmax: +d.vMax, imax: +d.iMax, pmax: +d.pMax || +d.vMax * +d.iMax,
+    vs: +sc.v || 100, is: iSet, io: +sc.iOut || 100, ps: +sc.opp || 10,
+    baud: +d.baud || +def.baud || 9600, address: +d.address || +def.address || 1,
+    bauds: (d.bauds || def.bauds || [2400, 4800, 9600, 19200]).map(Number)
+  };
+  o.lim = { ovp: +lim.ovp || o.vmax + 2, ocp: +lim.ocp || o.imax + 0.5, opp: +lim.opp || o.pmax + 10 };
+  if (![o.model, o.vmax, o.imax, o.vs, o.is, o.io, o.ps].every(x => Number.isFinite(x) && x > 0)) throw new Error(`device ${o.id}: invalid numbers`);
+  return o;
+}
+function parseDevices(j) {
+  if (!j || !Array.isArray(j.devices) || !j.devices.length) throw new Error('no "devices" array');
+  const def = j.defaults || {};
+  const list = j.devices.map(d => normDevice(d, def));
+  const ids = new Set(); list.forEach(d => { if (ids.has(d.id)) throw new Error('duplicate id ' + d.id); ids.add(d.id); });
+  return { defaults: { baud: +def.baud || 9600, address: +def.address || 1, bauds: (def.bauds || [2400, 4800, 9600, 19200]).map(Number), pollMs: +def.pollMs || 500, timeoutMs: +def.timeoutMs || 300 }, list };
+}
+async function loadDevices() {
+  const tries = [
+    async () => { const r = await fetch('devices.json', { cache: 'no-store' }); if (!r.ok) throw new Error(r.status); return [await r.json(), 'devices.json']; },
+    async () => { const j = store.get('devicesJson', null); if (!j) throw new Error('none'); return [j, 'loaded copy']; },
+    async () => [JSON.parse($('#devicesBuiltin').textContent), 'built-in']
+  ];
+  for (const t of tries) {
+    try { const [j, src] = await t(); DEV = { ...parseDevices(j), src }; break; } catch (e) { /* try next source */ }
+  }
+  fillDeviceUI();
+}
+function fillDeviceUI() {
+  const sel = $('#devSel'), keep = store.get('devSel', 'auto');
+  sel.innerHTML = '<option value="auto">Auto-detect</option>' + DEV.list.map(d => `<option value="${d.id}">${d.name}${d.verified ? '' : ' (unverified)'} · ${d.vmax} V ${d.imax} A</option>`).join('');
+  sel.value = DEV.list.some(d => d.id === keep) ? keep : 'auto';
+  $('#devSrc').textContent = `Device list: ${DEV.src} (${DEV.list.length})`;
+  $('#btnDevReset').hidden = DEV.src !== 'loaded copy';
+  fillBauds(currentDevice());
+  if (store.get('baud', null) == null) $('#baud').value = String(currentDevice()?.baud || DEV.defaults.baud);
+  if (store.get('addr', null) == null) $('#addr').value = currentDevice()?.address || DEV.defaults.address;
+  if (store.get('poll', null) == null) $('#poll').value = DEV.defaults.pollMs;
+  if (store.get('timeout', null) == null) $('#timeout').value = DEV.defaults.timeoutMs;
+  showLimits();
+}
+function fillBauds(d) {
+  const el = $('#baud'), cur = store.get('baud', null) || el.value || String(DEV.defaults.baud), list = (d && d.bauds) || DEV.defaults.bauds;
+  el.innerHTML = list.map(b => `<option>${b}</option>`).join('');
+  el.value = list.map(String).includes(String(cur)) ? String(cur) : String((d && d.baud) || DEV.defaults.baud);
+}
+const devById = id => DEV.list.find(d => d.id === id), devByModel = m => DEV.list.find(d => d.model === m);
+function currentDevice() { const v = $('#devSel').value; return v === 'auto' ? (S.dev || null) : devById(v); }
+function showLimits() {
+  const d = currentDevice();
+  $('#devLimits').textContent = d ? `${d.name}: ${d.type ? d.type + ', ' : ''}0–${d.vmax} V, 0–${d.imax} A, ${d.pmax} W · current ${d.is === 1000 ? '0.001' : '0.01'} A steps · default ${d.baud} baud, address ${d.address} · protection limits OVP ≤ ${d.lim.ovp} V, OCP ≤ ${d.lim.ocp} A, OPP ≤ ${d.lim.opp} W${d.notes ? ' · ' + d.notes : ''}` : 'Auto-detect: the device is identified from register 0x0B after connecting.';
+}
+/* Device chosen in the dropdown: preset its serial settings */
+function onDeviceSelect() {
+  const v = $('#devSel').value; store.set('devSel', v);
+  const d = devById(v);
+  if (d) {
+    fillBauds(d);
+    if (!S.connected) { $('#baud').value = String(d.baud); $('#addr').value = d.address; store.set('baud', $('#baud').value); store.set('addr', $('#addr').value); }
+    else if (String(d.baud) !== $('#baud').value || +$('#addr').value !== d.address) toast(`${d.name} defaults are ${d.baud} baud, address ${d.address}. Disconnect to apply them.`);
+  }
+  showLimits();
+  if (S.connected) { applyModel(S.model); S.needFill = true; renderMem(); if (S.sim) toast('Stop and restart the simulator to simulate the new device'); }
+}
+
 function applyModel(m) {
-  const sel = $('#modelSel').value;
-  if (sel !== 'auto') m = parseInt(sel, 10);
-  let d = MODELS[m];
+  const v = $('#devSel').value;
+  let d = v === 'auto' ? devByModel(m) : devById(v);
+  if (v !== 'auto' && d && S.connected && d.model !== m) toast(`Selected ${d.name}, but the supply reports model ${m}. Using ${d.name} limits and scaling as you chose.`, true);
   if (!d) {
     const vmax = Math.floor(m / 100), imax = m % 100, ok = m >= 1000 && m <= 9999 && vmax > 0 && imax > 0;
-    d = ok ? { name: 'DPS' + m, vmax, imax, is: imax <= 5 ? 1000 : 100, io: 100, untested: true } : { name: 'unknown (' + m + ')', vmax: 50, imax: 15, is: 100, io: 100, untested: true };
-    if (S.connected || S.t) toast(`Model register reports ${m}, which is not in the known list. Limits guessed as ${d.vmax} V / ${d.imax} A; choose the model manually if readings look wrong.`, true);
+    d = normDevice({ id: ok ? 'DPS' + m : 'unknown', name: ok ? 'DPS' + m : `unknown (${m})`, model: m || 1, vMax: ok ? vmax : 50, iMax: ok ? imax : 15, verified: false }, DEV.defaults);
+    if (S.connected || S.t) toast(`Model ${m} is not in the device list. Limits guessed as ${d.vmax} V / ${d.imax} A; pick the device in Settings or add it to devices.json.`, true);
   }
-  S.vmax = d.vmax; S.imax = d.imax; S.is = d.is; S.io = d.io;
+  S.dev = d; S.vmax = d.vmax; S.imax = d.imax; S.vs = d.vs; S.is = d.is; S.io = d.io; S.ps = d.ps;
   ['#setI', '#pOCP'].forEach(s => $(s).step = 1 / S.is);
   $('#setV').max = S.vmax; $('#setI').max = S.imax;
-  $('#modelInfo').textContent = `${d.name} · ${S.vmax} V / ${S.imax} A${S.version ? ' · fw ' + (S.version / 10).toFixed(1) : ''}${d.untested ? ' · untested model' : ''}${S.sim ? ' · simulated' : ''}`;
+  $('#pOVP').max = d.lim.ovp; $('#pOCP').max = d.lim.ocp; $('#pOPP').max = d.lim.opp;
+  $('#modelInfo').textContent = `${d.name} · ${S.vmax} V / ${S.imax} A${S.version ? ' · fw ' + (S.version / 10).toFixed(1) : ''}${d.verified ? '' : ' · unverified device'}${S.sim ? ' · simulated' : ''}`;
+  showLimits();
 }
 
 /* ============================== connection ============================== */
@@ -511,15 +608,29 @@ function setConnUI() {
   $('#simRBox').hidden = !(S.connected && S.sim);
   updateToolUI();
 }
+function updateSettingsLock() {
+  const busy = !!S.tool || S.cut.armed;
+  $('#settings').disabled = busy;
+  $('#baud').disabled = S.connected;
+  $('#setHint').textContent = busy ? 'Locked while a tool is running or the cutoff is armed.' : S.connected ? 'Disconnect to change the baud rate. Model change applies immediately (simulator: reconnect).' : 'Baud and address must match the supply’s settings menu.';
+}
 
 async function connect(sim) {
   const baud = parseInt($('#baud').value, 10), addr = parseInt($('#addr').value, 10);
   let t;
   try {
-    if (sim) t = new SimTransport();
+    if (sim) t = new SimTransport(devById($('#devSel').value) || devByModel(5015) || DEV.list[0]);
     else {
       if (!('serial' in navigator)) { toast('Web Serial is not available in this browser.', true); return; }
-      const port = await navigator.serial.requestPort();
+      let port = null;
+      const last = store.get('port', null);
+      if (last && $('#rememberPort').checked) {
+        const ports = await navigator.serial.getPorts();
+        const same = ports.filter(p => { const i = p.getInfo(); return i.usbVendorId === last.v && i.usbProductId === last.p; });
+        if (same.length === 1) port = same[0];
+      }
+      if (!port) port = await navigator.serial.requestPort();
+      const i = port.getInfo(); store.set('port', { v: i.usbVendorId, p: i.usbProductId });
       t = new SerialTransport(port);
     }
     setStatus('warn', 'Connecting…');
@@ -548,7 +659,9 @@ async function disconnect(lost) {
   const t = S.t; S.t = null;
   if (t) { try { await t.close(); } catch {} }
   setStatus(lost ? 'err' : '', lost ? 'Connection lost' : 'Disconnected');
-  setConnUI();
+  document.title = 'DPS Control';
+  $$('.ro').forEach(e => e.classList.remove('stale'));
+  setConnUI(); updateKeepAwake();
 }
 function onTransportLost(e) { toast('Serial error: ' + (e.message || e), true); if (S.connected) disconnect(true); }
 if ('serial' in navigator) {
@@ -585,7 +698,7 @@ function onSample(r) {
   }
   S.rateWin.push(now); while (S.rateWin.length && now - S.rateWin[0] > 5000) S.rateWin.shift();
 
-  if (S.needFill) { $('#setV').value = fV(s.uset); $('#setI').value = fI(s.iset); S.needFill = false; }
+  syncSetpointInputs(s);
   if (s.prot && !S.prevProt) {
     const msg = `${PROT[s.prot] || 'Protection'} tripped — output is off. Click to dismiss.`;
     $('#protBanner').textContent = msg; $('#protBanner').classList.add('show'); toast(msg, true); beep();
@@ -602,7 +715,28 @@ function onSample(r) {
   updateStats();
 }
 
+/* Keep the setpoint fields in step with the supply: overwrite them when the setpoint changes on the supply
+   (front panel, tool, preset recall) unless the user is typing; mark them orange while they hold an unsent value. */
+function syncSetpointInputs(s) {
+  const prev = S.devSet || {};
+  [['#setV', s.uset, fV, 'u', S.vs], ['#setI', s.iset, fI, 'i', S.is]].forEach(([sel, val, fmt, k, sc]) => {
+    const el = $(sel), changed = prev[k] !== undefined && Math.abs(prev[k] - val) > 1e-9;
+    if (S.needFill || (changed && document.activeElement !== el)) el.value = fmt(val);
+  });
+  S.devSet = { u: s.uset, i: s.iset }; S.needFill = false;
+  markDirty();
+}
+function markDirty() {
+  if (!S.devSet) return;
+  [['#setV', S.devSet.u, S.vs], ['#setI', S.devSet.i, S.is]].forEach(([sel, val, sc]) => {
+    const el = $(sel); el.classList.toggle('dirty', Math.abs((parseFloat(el.value) || 0) - val) > 0.5 / sc);
+  });
+}
+function syncNow() { if (!S.last) return; S.needFill = true; syncSetpointInputs(S.last); readProtection().catch(() => {}); }
+
 function updateReadouts(s) {
+  $$('.ro').forEach(e => e.classList.remove('stale'));
+  document.title = s.on ? `${fV(s.u)} V · ${fIo(s.i)} A${s.cc ? ' CC' : ''} — DPS` : (s.prot ? `${PROT[s.prot]} — DPS` : 'OFF — DPS');
   $('#roU').textContent = fV(s.u); $('#roI').textContent = fIo(s.i); $('#roP').textContent = fP(s.p);
   $('#roUset').textContent = fV(s.uset); $('#roIset').textContent = fI(s.iset); $('#roUin').textContent = fV(s.uin);
   $('#roR').textContent = s.on && s.i > 0.005 ? (s.u / s.i).toFixed(2) : '--';
@@ -646,7 +780,6 @@ if (typeof Chart !== 'undefined') {
       }
     }
   });
-  chart.getDatasetMeta(2).hidden = true;
 } else $('#chartMsg').textContent = 'Chart library could not be loaded (offline?). Everything else works.';
 
 function pushChart(s) {
@@ -696,6 +829,8 @@ $('#btnProtRead').onclick = () => guard(readProtection);
 $('#btnProtWrite').onclick = () => guard(async () => {
   const ovp = num('#pOVP'), ocp = num('#pOCP'), opp = num('#pOPP');
   if (![ovp, ocp, opp].every(x => Number.isFinite(x) && x >= 0)) throw new Error('Enter OVP, OCP and OPP');
+  const L = S.dev.lim;
+  if (ovp > L.ovp || ocp > L.ocp || opp > L.opp) throw new Error(`Limits for ${S.dev.name}: OVP ≤ ${L.ovp} V, OCP ≤ ${L.ocp} A, OPP ≤ ${L.opp} W (edit appLimits in devices.json)`);
   await S.mb.writeMany(0x52, [ovp * S.vs, ocp * S.is, opp * S.ps]);
   await readProtection(); toast('Protection limits written');
 });
@@ -709,7 +844,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') emergencyOff
 
 /* ============================== logging ============================== */
 $('#btnResetCnt').onclick = resetCounters;
-$('#btnRec').onclick = () => { S.rec = !S.rec; $('#btnRec').textContent = S.rec ? '■ Stop recording' : '● Record'; $('#btnRec').classList.toggle('danger', S.rec); };
+$('#btnRec').onclick = () => { S.rec = !S.rec; updateKeepAwake(); $('#btnRec').textContent = S.rec ? '■ Stop recording' : '● Record'; $('#btnRec').classList.toggle('danger', S.rec); };
 $('#btnClearRec').onclick = () => { S.recRows = []; $('#recInfo').textContent = '0 rows'; };
 $('#btnExportCsv').onclick = () => {
   if (!S.recRows.length) { toast('Nothing recorded yet. Press Record first.', true); return; }
@@ -726,8 +861,9 @@ function startTool(name) {
   if (S.tool) { toast(`"${S.tool}" is already running`, true); return false; }
   S.tool = name; S.stop = false; updateToolUI(); return true;
 }
-function endTool() { S.tool = null; updateToolUI(); }
+function endTool() { S.tool = null; S.needFill = true; updateToolUI(); }
 function updateToolUI() {
+  updateSettingsLock(); updateKeepAwake();
   ['#btnRamp', '#btnSeq'].forEach(s => $(s).disabled = !!S.tool);
   $$('.toolstop').forEach(b => b.disabled = !S.tool);
 }
@@ -841,6 +977,7 @@ CUT_FIELDS.forEach(id => $('#' + id).addEventListener('change', saveCut));
 function updateCutUI() {
   const b = $('#cutArm'); b.textContent = S.cut.armed ? 'ARMED' : 'DISARMED'; b.className = 'badge ' + (S.cut.armed ? 'cc' : '');
   $('#btnArm').textContent = S.cut.armed ? 'Disarm' : 'Arm';
+  updateSettingsLock(); updateKeepAwake();
 }
 $('#btnArm').onclick = () => {
   if (S.cut.armed) { S.cut.armed = false; updateCutUI(); $('#cutStatus').textContent = 'Disarmed by user'; return; }
@@ -930,14 +1067,13 @@ $$('.tab').forEach(t => t.onclick = () => {
   $$('.tab').forEach(x => x.classList.toggle('active', x === t));
   $$('.pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + t.dataset.tab));
 });
-['baud', 'addr', 'poll', 'timeout', 'modelSel'].forEach(id => {
+['baud', 'addr', 'poll', 'timeout'].forEach(id => {
   const el = $('#' + id), v = store.get(id, null); if (v != null) el.value = v;
   el.addEventListener('change', () => {
     store.set(id, el.value);
     if (!S.mb) return;
     if (id === 'addr') S.mb.addr = parseInt(el.value, 10) || 1;
     if (id === 'timeout') S.mb.timeout = parseInt(el.value, 10) || 300;
-    if (id === 'modelSel') { applyModel(S.model); S.needFill = true; renderMem(); }
     if (id === 'baud' && S.connected) toast('Reconnect to use the new baud rate');
   });
 });
@@ -945,8 +1081,62 @@ $('#chWin').value = store.get('chWin', '60');
 $('#btnConnect').onclick = () => S.connected ? disconnect() : connect(false);
 $('#btnSim').onclick = () => S.connected ? disconnect() : connect(true);
 $('#btnArm').addEventListener('click', () => { try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch {} });
-setInterval(() => { if (S.connected) updateStats(); }, 1000);
+setInterval(() => {
+  if (!S.connected) return;
+  updateStats();
+  const pollMs = Math.max(100, parseInt($('#poll').value, 10) || 500);
+  const stale = S.lastT == null || performance.now() - S.lastT > 3 * pollMs + 1500;
+  $$('.ro').forEach(e => e.classList.toggle('stale', stale));
+  if (stale) document.title = '⚠ no data — DPS';
+}, 1000);
 
+/* settings panel */
+$('#btnSettings').onclick = () => { const on = $('#settings').classList.toggle('show'); $('#btnSettings').classList.toggle('active', on); store.set('settingsOpen', on); };
+if (store.get('settingsOpen', true)) { $('#settings').classList.add('show'); $('#btnSettings').classList.add('active'); }
+$('#rememberPort').checked = store.get('rememberPort', true);
+$('#rememberPort').onchange = () => store.set('rememberPort', $('#rememberPort').checked);
+
+/* setpoint fields */
+$('#btnSync').onclick = syncNow;
+['#setV', '#setI'].forEach(sel => { $(sel).addEventListener('input', markDirty); $(sel).addEventListener('blur', markDirty); });
+
+/* simulator load: slider is logarithmic 0.1 Ω … 1 kΩ */
+const rFromSlider = v => +(0.1 * 10 ** (v / 25)).toPrecision(3), sliderFromR = r => Math.round(25 * Math.log10(r / 0.1));
+$('#simRr').oninput = () => { $('#simR').value = rFromSlider(+$('#simRr').value); };
+$('#simR').oninput = () => { const r = parseFloat($('#simR').value); if (r > 0) $('#simRr').value = sliderFromR(r); };
+$('#simRr').value = sliderFromR(parseFloat($('#simR').value));
+
+/* keep the screen awake while something long-running is active */
+let wakeLock = null;
+async function updateKeepAwake() {
+  const want = S.connected && (!!S.tool || S.cut.armed || S.rec);
+  try {
+    if (want && !wakeLock && 'wakeLock' in navigator && document.visibilityState === 'visible') {
+      wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } else if (!want && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch {}
+}
+document.addEventListener('visibilitychange', updateKeepAwake);
+
+/* warn before closing the tab while something is running */
+window.addEventListener('beforeunload', e => {
+  if (S.connected && (S.tool || S.cut.armed || (S.rec && S.recRows.length))) { e.preventDefault(); e.returnValue = ''; }
+});
+
+$('#devSel').onchange = onDeviceSelect;
+$('#btnDevLoad').onclick = () => $('#devFile').click();
+$('#devFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const j = JSON.parse(await f.text()); const parsed = parseDevices(j);
+    store.set('devicesJson', j); DEV = { ...parsed, src: 'loaded copy' }; fillDeviceUI();
+    if (S.connected) applyModel(S.model);
+    toast(`Loaded ${DEV.list.length} devices from ${f.name}`);
+  } catch (err) { toast('devices.json rejected: ' + err.message, true); }
+};
+$('#btnDevReset').onclick = () => { store.set('devicesJson', null); try { localStorage.removeItem('dps.devicesJson'); } catch {} loadDevices().then(() => toast('Using ' + DEV.src + ' device list')); };
+
+loadDevices();
 loadCut(); renderSeq(); renderMem(); updateCutUI(); setConnUI(); updateStats();
 </script>
 </body>

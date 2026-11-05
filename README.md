@@ -1,8 +1,13 @@
 # DPS Control – Web Serial controller for RD Tech (Riden) DPS & DPH power supplies
 
-`dps-control.html` is a single-file browser app for controlling a DPS-series programmable power module from a PC over its serial port: live readout, chart, logging, ramp/I-V sweep, sequences, auto cutoff, memory groups M0–M9, raw Modbus console and a simulator.
+`dps-control.html` is a browser app for controlling a DPS-series programmable power module from a PC over its serial port: live readout, chart, logging, ramp/I-V sweep, sequences, auto cutoff, memory groups M0–M9, raw Modbus console and a simulator.
 
 It needs only desktop **Chrome or Edge** (Web Serial) and talks **Modbus RTU** directly to the supply. Nothing to install, no vendor software.
+
+| File | Purpose |
+|---|---|
+| `dps-control.html` | The app |
+| `devices.json` | Supported devices: model register, limits, scaling, default baud rate and address. Edit it to add or tune devices. The HTML also contains a built-in copy, so it works on its own. |
 
 ---
 
@@ -20,7 +25,7 @@ The supply must be the **communication version** (sold with a USB or Bluetooth m
 | **DPH5005** | Buck/Boost | 0–50 V, 0–5 A, 250 W | **5205** | ×1000 | ×100 | ✅ auto-detected |
 | DPH3205 | Buck/Boost | 0–32 V, 0–5 A, 160 W | 3205 (expected) | ×1000 (expected) | ×100 | ⚠️ in model list, not confirmed by any source |
 
-For other model numbers the app guesses limits from the number (e.g. 5015 → 50 V / 15 A), shows "untested model" and lets you pick the model manually in the header.
+The list above is what ships in `devices.json`. In **⚙ Settings → Device** you can leave **Auto-detect** (the device is identified from register 0x0B) or pick a device, which presets its baud rate and address and applies its limits. For a model number that is not in the list, the app guesses limits from the number (e.g. 5015 → 50 V / 15 A) and marks it "unverified device".
 
 > **Tested status:** the logic was tested against the built-in simulator, not on physical hardware. Register addresses and scaling come from the sources listed at the end. If a reading is off by ×10, choose the model manually and report it.
 
@@ -62,14 +67,50 @@ For other model numbers the app guesses limits from the number (e.g. 5015 → 50
 
 ---
 
+## devices.json
+
+```json
+{
+  "schema": 1,
+  "defaults": { "baud": 9600, "address": 1, "bauds": [2400, 4800, 9600, 19200], "pollMs": 500, "timeoutMs": 300 },
+  "devices": [
+    {
+      "id": "DPS5015", "model": 5015, "type": "Buck", "verified": true,
+      "vMax": 50, "iMax": 15, "pMax": 750,
+      "scale": { "v": 100, "iSet": 100, "iOut": 100, "opp": 10 },
+      "baud": 9600, "address": 1,
+      "appLimits": { "ovp": 52, "ocp": 15.5, "opp": 760 }
+    }
+  ]
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `id` | Name shown in the dropdown (must be unique) |
+| `model` | Value of register 0x0B, used for auto-detection |
+| `vMax`, `iMax`, `pMax` | Setpoint limits enforced by the app |
+| `scale` | Register multipliers: value = register ÷ scale. `iSet` covers I-SET and S-OCP, `iOut` covers IOUT, `opp` covers S-OPP |
+| `baud`, `address` | Preset into Settings when the device is picked (optional, falls back to `defaults`) |
+| `appLimits` | Highest OVP / OCP / OPP the app lets you write. These are app-side guards, not device specifications |
+| `verified`, `notes` | Shown in the UI; `false` marks the device as unverified |
+
+Only `id`, `model`, `vMax` and `iMax` are required; everything else has defaults.
+
+**Where the list comes from:** the app first tries `devices.json` next to the HTML. That works when the page is served over http (e.g. `python -m http.server`, then open http://localhost:8000/dps-control.html). Chrome does not let a page opened by double-click (file://) read neighbouring files, so in that case click **Load devices.json…** in Settings once; the list is remembered until you press **Reset**. If neither is available, the built-in copy is used. Settings shows which source is active.
+
+---
+
 ## Quick start
 
 1. Open `dps-control.html` in desktop Chrome or Edge (double-click works, file:// is fine).
-2. Set **Baud** and **Addr** to match the supply, click **Connect**, pick the COM port.
-3. The model is read from register 0x0B and limits/scaling are set automatically.
+2. In **⚙ Settings** pick your **Device** (or leave Auto-detect), check **Baud** and **Addr** match the supply, click **Connect** and pick the COM port. Next time the same USB adapter reconnects without the picker.
+3. The model is read from register 0x0B. With Auto-detect the matching device from the list is used; if you picked a device and the supply reports a different model, you get a warning.
 4. **Esc** turns the output off immediately and stops every running tool.
+5. The setpoint fields follow the supply automatically (front panel, presets, tools). An orange field holds a value not yet sent; **⟳ Sync from supply** reloads them.
+6. The browser tab title shows live V / A, readouts grey out as *stale* if the supply stops answering, and the screen is kept awake while a tool, cutoff or recording is running.
 
-No hardware at hand? Click **Simulator** — it emulates a DPS5015 with an adjustable resistive load.
+No hardware at hand? Click **Simulator**. It emulates the device chosen in Settings (Auto-detect = DPS5015) with an adjustable resistive load, realistic output settling and ~1 % dropped frames.
 
 ---
 
@@ -112,7 +153,7 @@ Base address = **0x50 + 0x10 × n** (M0 = 0x50, M1 = 0x60 … M9 = 0xE0). M0 is 
 ### Notes on the ⚠️ items
 
 1. **IOUT on 5 A models.** The protocol document gives IOUT 2 decimals while I-SET has 3, and rdserialtool (written on a DPS5005) also divides IOUT by 100. The app uses ×100 for every model. On a DPS5015/5020 there is no ambiguity (both ×100). If your 5 A unit shows current 10× too high, report it.
-2. **POWER (0x04).** The decimal point moves with the range, so the app ignores this register and compute P = U × I instead.
+2. **POWER (0x04).** The decimal point moves with the range, so the app ignores this register and computes P = U × I instead.
 3. **Group offset +6.** The protocol document calls it M-PRE, rdserialtool calls it "maintain output". Its exact effect is unclear, so the app reads it and writes the same value back unchanged.
 
 Other corrections from the document: CV/CC lists "CV" for both values (1 is CC); S-INI is listed with 2 decimals but is a 0/1 flag.
