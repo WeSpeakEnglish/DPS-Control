@@ -6,9 +6,11 @@ DPS Control is a browser app for controlling a DPS-series programmable power mod
 
 It needs only desktop **Chrome or Edge** (Web Serial) and talks **Modbus RTU** directly to the supply. Nothing to install, no vendor software.
 
+**▶ Live app: https://wespeakenglish.github.io/DPS-Control/** — open it in desktop Chrome or Edge, plug in the USB adapter and click **Connect** (or **Simulator** to try it without hardware). The serial connection stays between your browser and the adapter; nothing is sent to a server.
+
 | File | Purpose |
 |---|---|
-| `dps-control.html` | The app |
+| `index.html` | The app |
 | `dps-control.css` | All styling, including the light and dark themes. Required: keep it in the same folder as the HTML. |
 | `devices.json` | Supported devices: model register, limits, scaling, default baud rate and address. Edit it to add or tune devices. The HTML also contains a built-in copy, so the app still works without it. |
 
@@ -100,13 +102,13 @@ The list above is what ships in `devices.json`. In **⚙ Settings → Device** y
 
 Only `id`, `model`, `vMax` and `iMax` are required; everything else has defaults.
 
-**Where the list comes from:** the app first tries `devices.json` next to the HTML. That works when the page is served over http (e.g. `python -m http.server`, then open http://localhost:8000/dps-control.html). Chrome does not let a page opened by double-click (file://) read neighbouring files, so in that case click **Load devices.json…** in Settings once; the list is remembered until you press **Reset**. If neither is available, the built-in copy is used. Settings shows which source is active.
+**Where the list comes from:** the app first tries `devices.json` next to the HTML. That works when the page is served over http (the live app on GitHub Pages does this automatically; locally, e.g. `python -m http.server`, then open http://localhost:8000/). Chrome does not let a page opened by double-click (file://) read neighbouring files, so in that case click **Load devices.json…** in Settings once; the list is remembered until you press **Reset**. If neither is available, the built-in copy is used. Settings shows which source is active.
 
 ---
 
 ## Quick start
 
-1. Keep `dps-control.html`, `dps-control.css` and `devices.json` in one folder and open the HTML in desktop Chrome or Edge (double-click works, file:// is fine).
+1. Open the [live app](https://wespeakenglish.github.io/DPS-Control/) in desktop Chrome or Edge. To run it offline instead, keep `index.html`, `dps-control.css` and `devices.json` in one folder and open `index.html` (double-click works, file:// is fine).
 2. In **⚙ Settings** pick your **Device** (or leave Auto-detect), check **Baud** and **Addr** match the supply, click **Connect** and pick the COM port. Next time the same USB adapter reconnects without the picker. To choose the port every time (for example with two identical adapters on two supplies), untick **Reconnect to last port without asking** in Settings.
 3. The model is read from register 0x0B. With Auto-detect the matching device from the list is used; if you picked a device and the supply reports a different model, you get a warning.
 4. **Esc** turns the output off immediately and stops every running tool.
