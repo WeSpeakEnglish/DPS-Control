@@ -62,15 +62,15 @@
       <h2>Setpoints</h2>
       <fieldset class="needconn" disabled>
         <div class="grid2">
-          <span>Voltage</span><div class="row m0"><input id="setV" type="number" step="0.01" min="0" value="0"> V <span class="unsent" id="setVHint" hidden><span class="msg"></span><button class="mini" data-act="send" data-p="V">Apply</button><button class="mini" data-act="undo" data-p="V">Undo</button></span></div>
+          <span>Voltage</span><div class="row m0"><input id="setV" type="number" step="0.01" min="0" value="0"> V</div>
           <span></span><div class="steps" data-p="V"><button data-d="-1">−1</button><button data-d="-0.1">−0.1</button><button data-d="-0.01">−0.01</button><button data-d="0.01">+0.01</button><button data-d="0.1">+0.1</button><button data-d="1">+1</button></div>
-          <span>Current</span><div class="row m0"><input id="setI" type="number" step="0.01" min="0" value="0"> A <span class="unsent" id="setIHint" hidden><span class="msg"></span><button class="mini" data-act="send" data-p="I">Apply</button><button class="mini" data-act="undo" data-p="I">Undo</button></span></div>
+          <span>Current</span><div class="row m0"><input id="setI" type="number" step="0.01" min="0" value="0"> A</div>
           <span></span><div class="steps" data-p="I"><button data-d="-1">−1</button><button data-d="-0.1">−0.1</button><button data-d="-0.01">−0.01</button><button data-d="0.01">+0.01</button><button data-d="0.1">+0.1</button><button data-d="1">+1</button></div>
         </div>
         <div class="row mt10"><button class="primary" id="btnApply">Apply V &amp; I</button><button id="btnSync" title="Load the supply's current setpoints into the fields now">⟳ Sync now</button><button id="btnLock">Lock keys</button></div>
         <div class="row"><label title="When on, the fields follow setpoint changes made on the front panel, by presets or by tools. When off, they change only when you type, press Sync now, or connect."><input type="checkbox" id="autoSync" checked> Auto-sync fields from supply</label></div>
         <div class="row"><span class="muted">Backlight</span><input id="bled" type="range" min="0" max="5" step="1" value="3"><span id="bledVal" class="muted">3</span></div>
-        <div class="muted">Enter in a field applies it. Step buttons apply immediately. An orange field holds a value the supply doesn't have yet: <b>Apply</b> sends it, <b>Undo</b> brings back the supply's value.</div>
+        <div class="muted">Enter in a field applies it. Step buttons apply immediately. An orange frame means the field holds a value the supply doesn't have yet.</div>
       </fieldset>
     </section>
 
@@ -118,7 +118,7 @@
       <div class="row mt10">
         <button id="btnResetCnt">Reset counters</button>
         <span class="f">Log <select id="recMode" title="How often a row is written while recording"><option value="all">As received</option><option value="every">Every</option></select>
-          <span id="recEveryBox" hidden><input id="recEvery" class="w70" type="number" min="0.1" step="0.1" value="1"> s</span></span>
+          <span id="recEveryBox" hidden><input id="recEvery" class="w70" type="number" min="1" step="1" value="1"> s</span></span>
         <button id="btnRec">● Record</button><span id="recInfo" class="muted">0 rows</span>
         <button id="btnExportCsv">Export CSV</button><button id="btnClearRec">Clear log</button>
       </div>
@@ -670,8 +670,9 @@ function onSample(r) {
 
   updateReadouts(s);
   pushChart(s);
-  if (S.rec && recDue(now)) {
-    S.recRows.push([new Date().toISOString(), s.t.toFixed(3), fV(s.uset), fI(s.iset), fV(s.u), fIo(s.i), s.p.toFixed(3), fV(s.uin), s.drop ? 'INPUT LIMIT' : s.cc ? 'CC' : 'CV', s.on ? 1 : 0, PROT[s.prot] || s.prot, S.ah.toFixed(6), S.wh.toFixed(6)]);
+  const recT = S.rec ? recDue(now) : null;
+  if (recT != null) {
+    S.recRows.push([new Date().toISOString(), recT, s.t.toFixed(3), fV(s.uset), fI(s.iset), fV(s.u), fIo(s.i), s.p.toFixed(3), fV(s.uin), s.drop ? 'INPUT LIMIT' : s.cc ? 'CC' : 'CV', s.on ? 1 : 0, PROT[s.prot] || s.prot, S.ah.toFixed(6), S.wh.toFixed(6)]);
     recInfoText();
   }
   checkCutoff(s, now);
@@ -691,14 +692,10 @@ function syncSetpointInputs(s) {
 }
 function markDirty() {
   if (!S.devSet) return;
-  [['#setV', '#setVHint', S.devSet.u, S.vs, fV, 'V'], ['#setI', '#setIHint', S.devSet.i, S.is, fI, 'A']].forEach(([sel, hint, val, sc, fmt, unit]) => {
-    const el = $(sel), dirty = Math.abs((parseFloat(el.value) || 0) - val) > 0.5 / sc, h = $(hint);
+  [['#setV', S.devSet.u, S.vs, fV, 'V'], ['#setI', S.devSet.i, S.is, fI, 'A']].forEach(([sel, val, sc, fmt, unit]) => {
+    const el = $(sel), dirty = Math.abs((parseFloat(el.value) || 0) - val) > 0.5 / sc;
     el.classList.toggle('dirty', dirty);
-    h.hidden = !dirty;
-    if (dirty) {
-      h.querySelector('.msg').textContent = `Not applied · supply: ${fmt(val)} ${unit}`;
-      h.title = `The field shows ${el.value} ${unit} but the supply is set to ${fmt(val)} ${unit}. Apply (or Enter) sends the field value; Undo puts the supply value back in the field.`;
-    }
+    el.title = dirty ? `Not applied. The supply is set to ${fmt(val)} ${unit}. Press Enter or Apply to send.` : '';
   });
 }
 function syncNow() { if (!S.last) return; S.needFill = true; syncSetpointInputs(S.last); readProtection().catch(() => {}); }
@@ -865,11 +862,6 @@ async function sendSetpoints(v, i) {
 const setOut = on => S.mb.write(REG.ONOFF, on ? 1 : 0);
 
 $('#btnApply').onclick = () => guard(() => sendSetpoints(num('#setV'), num('#setI')));
-document.querySelectorAll('.unsent button.mini').forEach(b => b.onclick = () => {
-  const isV = b.dataset.p === 'V', el = isV ? $('#setV') : $('#setI');
-  if (b.dataset.act === 'send') guard(() => isV ? sendSetpoints(num('#setV'), null) : sendSetpoints(null, num('#setI')));
-  else if (S.devSet) { el.value = isV ? fV(S.devSet.u) : fI(S.devSet.i); markDirty(); }
-});
 $('#setV').onkeydown = e => { if (e.key === 'Enter') guard(() => sendSetpoints(num('#setV'), null)); };
 $('#setI').onkeydown = e => { if (e.key === 'Enter') guard(() => sendSetpoints(null, num('#setI'))); };
 $$('.steps').forEach(box => box.addEventListener('click', e => {
@@ -918,37 +910,54 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') emergencyOff
 $('#btnResetCnt').onclick = resetCounters;
 /* Recording rate: "As received" writes every reading; "Every N s" writes the latest reading once per
    N-second slot, counted from when recording started (first row immediately). */
-const recEveryMs = () => Math.max(100, (parseFloat($('#recEvery').value) || 1) * 1000);
+const recEverySec = () => Math.max(1, Math.round(parseFloat($('#recEvery').value) || 1));
+const recEveryMs = () => recEverySec() * 1000;
+/* Returns the rec_s value for this reading, or null if no row is due.
+   As received: seconds since recording started (ms resolution).
+   Every N s: exactly 0, N, 2N … ; a timer triggers a fresh read on each boundary so rows don't lag. */
 function recDue(now) {
-  if ($('#recMode').value !== 'every') return true;
   if (S.recStart == null) S.recStart = now;
-  if (now < (S.recNext || 0)) return false;
-  const n = recEveryMs();
-  S.recNext = S.recStart + (Math.floor((now - S.recStart) / n + 1e-6) + 1) * n;
-  return true;
+  const el = now - S.recStart;
+  if ($('#recMode').value !== 'every') return (el / 1000).toFixed(3);
+  if (now < (S.recNext || 0) - 20) return null;
+  const n = recEveryMs(), k = Math.floor((el + 20) / n);
+  S.recNext = S.recStart + (k + 1) * n;
+  return String(k * recEverySec());
+}
+function scheduleRecTick() {
+  clearTimeout(S.recTimer); S.recTimer = null;
+  if (!S.rec || $('#recMode').value !== 'every' || S.recStart == null) return;
+  const n = recEveryMs(), now = performance.now();
+  const next = S.recStart + (Math.floor((now - S.recStart) / n) + 1) * n;
+  S.recTimer = setTimeout(() => {
+    if (S.connected && S.rec) { if (S.polling) S.kick = true; else poll(); }
+    scheduleRecTick();
+  }, Math.max(0, next - now));
 }
 function recInfoText() {
-  const mode = $('#recMode').value === 'every' ? ` · every ${parseFloat($('#recEvery').value) || 1} s` : ' · as received';
+  const mode = $('#recMode').value === 'every' ? ` · every ${recEverySec()} s` : ' · as received';
   $('#recInfo').textContent = S.recRows.length + ' rows' + mode;
 }
 function onRecModeChange() {
+  $('#recEvery').value = recEverySec();
   $('#recEveryBox').hidden = $('#recMode').value !== 'every';
   store.set('recMode', $('#recMode').value); store.set('recEvery', $('#recEvery').value);
   S.recStart = S.rec ? performance.now() : null; S.recNext = 0;
-  recInfoText();
+  scheduleRecTick(); recInfoText();
 }
 $('#recMode').value = store.get('recMode', 'all') === 'every' ? 'every' : 'all';
 $('#recEvery').value = store.get('recEvery', '1');
 $('#recMode').onchange = onRecModeChange; $('#recEvery').onchange = onRecModeChange;
 onRecModeChange();
 $('#btnRec').onclick = () => {
-  S.rec = !S.rec; S.recStart = S.rec ? performance.now() : null; S.recNext = 0;
+  S.rec = !S.rec; S.recStart = S.rec ? performance.now() : null; S.recNext = 0; scheduleRecTick();
+  if (S.rec && S.connected) { if (S.polling) S.kick = true; else poll(); }
   updateKeepAwake(); $('#btnRec').textContent = S.rec ? '■ Stop recording' : '● Record'; $('#btnRec').classList.toggle('danger', S.rec);
 };
 $('#btnClearRec').onclick = () => { S.recRows = []; recInfoText(); };
 $('#btnExportCsv').onclick = () => {
   if (!S.recRows.length) { toast('Nothing recorded yet. Press Record first.', true); return; }
-  const head = 'timestamp,t_s,u_set_V,i_set_A,u_out_V,i_out_A,p_W,u_in_V,mode,output,protect,Ah,Wh';
+  const head = 'timestamp,rec_s,chart_t_s,u_set_V,i_set_A,u_out_V,i_out_A,p_W,u_in_V,mode,output,protect,Ah,Wh';
   download(`dps_log_${stamp()}.csv`, head + '\n' + S.recRows.map(r => r.join(',')).join('\n'), 'text/csv');
 };
 $('#chWin').onchange = () => { store.set('chWin', $('#chWin').value); redrawChart(); };
