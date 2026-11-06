@@ -7,7 +7,8 @@ It needs only desktop **Chrome or Edge** (Web Serial) and talks **Modbus RTU** d
 | File | Purpose |
 |---|---|
 | `dps-control.html` | The app |
-| `devices.json` | Supported devices: model register, limits, scaling, default baud rate and address. Edit it to add or tune devices. The HTML also contains a built-in copy, so it works on its own. |
+| `dps-control.css` | All styling, including the light and dark themes. Required: keep it in the same folder as the HTML. |
+| `devices.json` | Supported devices: model register, limits, scaling, default baud rate and address. Edit it to add or tune devices. The HTML also contains a built-in copy, so the app still works without it. |
 
 ---
 
@@ -72,7 +73,7 @@ The list above is what ships in `devices.json`. In **⚙ Settings → Device** y
 ```json
 {
   "schema": 1,
-  "defaults": { "baud": 9600, "address": 1, "bauds": [2400, 4800, 9600, 19200], "pollMs": 500, "timeoutMs": 300 },
+  "defaults": { "baud": 9600, "address": 1, "bauds": [2400, 4800, 9600, 19200], "pollMs": 100, "timeoutMs": 300 },
   "devices": [
     {
       "id": "DPS5015", "model": 5015, "type": "Buck", "verified": true,
@@ -103,12 +104,14 @@ Only `id`, `model`, `vMax` and `iMax` are required; everything else has defaults
 
 ## Quick start
 
-1. Open `dps-control.html` in desktop Chrome or Edge (double-click works, file:// is fine).
+1. Keep `dps-control.html`, `dps-control.css` and `devices.json` in one folder and open the HTML in desktop Chrome or Edge (double-click works, file:// is fine).
 2. In **⚙ Settings** pick your **Device** (or leave Auto-detect), check **Baud** and **Addr** match the supply, click **Connect** and pick the COM port. Next time the same USB adapter reconnects without the picker.
 3. The model is read from register 0x0B. With Auto-detect the matching device from the list is used; if you picked a device and the supply reports a different model, you get a warning.
 4. **Esc** turns the output off immediately and stops every running tool.
-5. The setpoint fields follow the supply automatically (front panel, presets, tools). An orange field holds a value not yet sent; **⟳ Sync from supply** reloads them.
-6. The browser tab title shows live V / A, readouts grey out as *stale* if the supply stops answering, and the screen is kept awake while a tool, cutoff or recording is running.
+5. With **Auto-sync fields from supply** ticked (default), the setpoint fields follow changes made on the front panel, by presets or by tools. Untick it to keep your typed values; an orange field then shows it differs from the supply. **⟳ Sync now** reloads them on demand.
+6. Readings refresh every 100 ms by default (Settings → Poll ms, minimum 50). After every command the page reads back immediately and polls as fast as the link allows for 1.5 s, so a switch or setpoint change shows within ~0.1 s at 9600 baud. **Read round-trip ms** in Measurements shows the real link speed; 19200 baud roughly halves it.
+7. The browser tab title shows live V / A, readouts grey out as *stale* if the supply stops answering, and the screen is kept awake while a tool, cutoff or recording is running.
+8. **Theme:** the header button cycles **◐ Auto** (follows your system light/dark setting) → **☀ Light** → **☾ Dark**. The choice is remembered, and the chart follows the theme. To change colours, edit the tokens at the top of `dps-control.css`.
 
 No hardware at hand? Click **Simulator**. It emulates the device chosen in Settings (Auto-detect = DPS5015) with an adjustable resistive load, realistic output settling and ~1 % dropped frames.
 

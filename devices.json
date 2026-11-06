@@ -5,7 +5,7 @@
     "baud": 9600,
     "address": 1,
     "bauds": [2400, 4800, 9600, 19200],
-    "pollMs": 500,
+    "pollMs": 100,
     "timeoutMs": 300
   },
   "devices": [

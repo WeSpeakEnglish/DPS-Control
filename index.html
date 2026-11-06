@@ -5,106 +5,17 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DPS Control</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<style>
-:root{--bg:#0f1115;--panel:#171a21;--panel2:#1f232c;--line:#2a2f3a;--text:#e6e8ec;--mute:#8b93a3;
---v:#facc15;--i:#38bdf8;--p:#f472b6;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--acc:#6366f1}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
-header h1{font-size:16px;margin:0 6px 0 0;font-weight:650}
-.spacer{flex:1}
-.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-size:12px}
-.pill i{width:8px;height:8px;border-radius:50%;background:var(--mute)}
-.pill.ok i{background:var(--ok)}.pill.warn i{background:var(--warn)}.pill.err i{background:var(--bad)}
-.f{display:flex;align-items:center;gap:6px;color:var(--mute);font-size:12px}
-input,select,button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
-input[type=number]{width:90px}
-input[type=range]{padding:0;accent-color:var(--acc)}
-input[type=checkbox]{accent-color:var(--acc)}
-button{cursor:pointer}button:hover:not(:disabled){border-color:#4a5263}
-button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
-button.danger{background:#7f1d1d;border-color:#b91c1c}
-button:disabled{opacity:.45;cursor:not-allowed}
-fieldset{border:0;margin:0;padding:0;min-width:0}
-main{display:grid;grid-template-columns:minmax(340px,430px) 1fr;gap:12px;padding:12px 16px}
-.col{display:flex;flex-direction:column;gap:12px;min-width:0}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0}
-.card h2{margin:0 0 10px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
-.ro{display:flex;align-items:baseline;justify-content:space-between;background:#0b0d11;border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin-bottom:6px}
-.ro .val{font:600 46px/1.05 ui-monospace,"Cascadia Mono",Consolas,monospace;font-variant-numeric:tabular-nums}
-.ro .unit{font-size:18px;color:var(--mute);margin-left:4px}
-.ro .sub{font-size:12px;color:var(--mute);text-align:right;font-variant-numeric:tabular-nums}
-.ro.v .val{color:var(--v)}.ro.i .val{color:var(--i)}.ro.p .val{color:var(--p)}
-.badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.badge{padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600;background:var(--panel2);border:1px solid var(--line)}
-.badge.cv{color:var(--v);border-color:#854d0e}.badge.cc{color:#fb923c;border-color:#9a3412}
-.badge.ok{color:var(--ok);border-color:#166534}.badge.bad{background:var(--bad);color:#fff;border-color:var(--bad)}
-.outrow{display:flex;gap:10px;align-items:stretch;margin-top:10px}
-.outstate{flex:1;display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;background:#0b0d11;border:1px solid var(--line)}
-.outstate .lamp{width:18px;height:18px;border-radius:50%;background:#3a3f4b;flex:none;box-shadow:inset 0 0 0 2px #0006}
-.outstate .lbl{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.08em}
-.outstate .st{font-size:22px;font-weight:800;letter-spacing:.04em;line-height:1.1}
-.outstate .why{font-size:12px;color:var(--mute)}
-.outstate.on{border-color:var(--ok);background:#052e16}
-.outstate.on .lamp{background:var(--ok);box-shadow:0 0 12px 3px #22c55e99}
-.outstate.on .st{color:#86efac}
-.outstate.tripped{border-color:var(--bad);background:#2a0b0b}
-.outstate.tripped .lamp{background:var(--bad);box-shadow:0 0 12px 3px #ef444499}
-.outstate.tripped .st{color:#fca5a5}
-.outbtn{min-width:150px;padding:10px 16px;font-size:16px;font-weight:700;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
-.outbtn small{font-size:11px;font-weight:500;opacity:.85}
-.outbtn.turnon{background:#15803d;border-color:#22c55e;color:#fff}
-.outbtn.turnoff{background:#b91c1c;border-color:#ef4444;color:#fff}
-.outbtn.busy{opacity:.6;cursor:progress}
-section.card.live{border-color:#166534}
-.simbox[hidden]{display:none}
-fieldset:disabled .outbtn{background:var(--panel2);border-color:var(--line);color:var(--mute)}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}
-.grid2{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center}
-.steps{display:flex;gap:4px;flex-wrap:wrap}
-.steps button{padding:3px 6px;font-size:12px;min-width:46px;font-variant-numeric:tabular-nums}
-.chartbox{position:relative;height:360px}
-.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
-.stat{background:var(--panel2);border-radius:8px;padding:6px 10px}
-.stat b{display:block;font:600 18px ui-monospace,Consolas,monospace;font-variant-numeric:tabular-nums}
-.stat span{font-size:11px;color:var(--mute)}
-.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:-4px 0 12px;flex-wrap:wrap}
-.tab{background:none;border:none;border-bottom:2px solid transparent;border-radius:0;padding:8px 12px;color:var(--mute)}
-.tab.active{color:var(--text);border-bottom-color:var(--acc)}
-.pane{display:none}.pane.active{display:block}
-table{border-collapse:collapse;width:100%}
-th,td{padding:4px 6px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;white-space:nowrap}
-th{color:var(--mute);font-weight:500;font-size:12px}
-td input{width:78px}
-tr.cur td{background:#312e81}
-.scroll{overflow:auto}
-.log{height:260px;overflow:auto;background:#0b0d11;border:1px solid var(--line);border-radius:6px;padding:6px;font:12px/1.5 ui-monospace,Consolas,monospace;white-space:pre}
-.tx{color:#93c5fd}.rx{color:#86efac}.er{color:#fca5a5}
-.progress{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;margin:8px 0}
-.progress>i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}
-.banner{display:none;padding:9px 16px;font-weight:600}
-.banner.show{display:block}
-#noSerial{background:#78350f}
-#protBanner{background:#7f1d1d;cursor:pointer}
-.muted{color:var(--mute);font-size:12px}
-.full{grid-column:1/-1}
-.split{display:grid;grid-template-columns:minmax(300px,1fr) minmax(300px,1fr);gap:16px}
-#toast{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);display:flex;flex-direction:column-reverse;align-items:center;gap:6px;z-index:10;pointer-events:none}
-#toast div{pointer-events:auto;cursor:pointer;background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--acc);padding:7px 12px;border-radius:6px;max-width:min(520px,92vw);box-shadow:0 4px 16px #0009;font-size:13px}
-#toast div.err{border-left-color:var(--bad)}
-.settings{display:none;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:10px 16px;background:var(--panel2);border-bottom:1px solid var(--line)}
-.settings.show{display:flex}
-#devLimits{flex-basis:100%}
-#btnSettings.active{border-color:var(--acc)}
-.grid2>select,.grid2>input{justify-self:start}
-.grid2>select{min-width:160px}
-input.dirty{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset}
-.simbox{display:flex;align-items:center;gap:8px;margin-top:8px;padding:6px 10px;border:1px dashed #4f46e5;border-radius:8px;font-size:12px;color:var(--mute)}
-.simbox input[type=range]{flex:1}
-.ro.stale .val{opacity:.35}
-.ro.stale::after{content:'stale';font-size:11px;color:var(--warn);margin-left:8px}
-@media(max-width:1000px){main{grid-template-columns:1fr}.split{grid-template-columns:1fr}}
-</style>
+<link rel="stylesheet" href="dps-control.css">
+<script>
+/* Apply the saved theme before first paint. "auto" follows the operating system. */
+(function () {
+  var pref = 'auto';
+  try { pref = JSON.parse(localStorage.getItem('dps.theme')) || 'auto'; } catch (e) {}
+  var dark = pref === 'dark' || (pref === 'auto' && !(window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches));
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  document.documentElement.dataset.themePref = pref;
+})();
+</script>
 </head>
 <body>
 <header>
@@ -112,6 +23,7 @@ input.dirty{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset}
   <span class="pill" id="status"><i></i><span>Disconnected</span></span>
   <span id="modelInfo" class="muted"></span>
   <div class="spacer"></div>
+  <button id="btnTheme" title="Theme: Auto follows your system setting">◐ Auto</button>
   <button id="btnSettings" title="Connection settings">⚙ Settings</button>
   <button id="btnConnect" class="primary">Connect</button>
   <button id="btnSim">Simulator</button>
@@ -119,9 +31,9 @@ input.dirty{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset}
 <fieldset class="settings" id="settings">
   <label class="f">Device <select id="devSel"><option value="auto">Auto-detect</option></select></label>
   <label class="f">Baud <select id="baud"><option>9600</option></select></label>
-  <label class="f">Addr <input id="addr" type="number" min="1" max="255" value="1" style="width:60px"></label>
-  <label class="f">Poll ms <input id="poll" type="number" min="100" max="10000" step="50" value="500" style="width:72px"></label>
-  <label class="f">Timeout ms <input id="timeout" type="number" min="50" max="3000" step="50" value="300" style="width:72px"></label>
+  <label class="f">Addr <input class="w60" id="addr" type="number" min="1" max="255" value="1"></label>
+  <label class="f">Poll ms <input class="w72" id="poll" type="number" min="50" max="10000" step="50" value="100"></label>
+  <label class="f">Timeout ms <input class="w72" id="timeout" type="number" min="50" max="3000" step="50" value="300"></label>
   <label class="f"><input type="checkbox" id="rememberPort" checked> Reconnect to last port without asking</label>
   <span class="f"><span class="muted" id="devSrc">Device list: built-in</span><button id="btnDevLoad" title="Load a devices.json file">Load devices.json…</button><button id="btnDevReset" title="Forget a loaded list and use the built-in one">Reset</button><input type="file" id="devFile" accept=".json,application/json" hidden></span>
   <span class="muted" id="devLimits"></span>
@@ -140,24 +52,25 @@ input.dirty{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset}
       <div class="badges"><span class="badge" id="bMode">--</span><span class="badge" id="bProt">--</span><span class="badge" id="bLock">--</span></div>
       <div class="outrow">
         <div class="outstate" id="outState" aria-live="polite"><span class="lamp"></span><div><div class="lbl">Output is</div><div class="st" id="outSt">—</div><div class="why" id="outWhy">not connected</div></div></div>
-        <fieldset class="needconn" disabled style="display:flex"><button class="outbtn turnon" id="btnOut"><span id="outAct">▶ Turn ON</span><small id="outActSub">apply voltage to the terminals</small></button></fieldset>
+        <fieldset class="needconn flex" disabled><button class="outbtn turnon" id="btnOut"><span id="outAct">▶ Turn ON</span><small id="outActSub">apply voltage to the terminals</small></button></fieldset>
       </div>
-      <div class="simbox" id="simRBox" hidden>Simulated load <input id="simRr" type="range" min="0" max="100" step="1" value="45"><input id="simR" type="number" value="8" step="0.5" min="0.1" style="width:70px"> Ω</div>
-      <div class="muted" style="margin-top:6px">Esc = emergency output OFF and stop all tools</div>
+      <div class="simbox" id="simRBox" hidden>Simulated load <input id="simRr" type="range" min="0" max="100" step="1" value="45"><input class="w70" id="simR" type="number" value="8" step="0.5" min="0.1"> Ω</div>
+      <div class="muted mt6">Esc = emergency output OFF and stop all tools</div>
     </section>
 
     <section class="card">
       <h2>Setpoints</h2>
       <fieldset class="needconn" disabled>
         <div class="grid2">
-          <span>Voltage</span><div class="row" style="margin:0"><input id="setV" type="number" step="0.01" min="0" value="0"> V</div>
+          <span>Voltage</span><div class="row m0"><input id="setV" type="number" step="0.01" min="0" value="0"> V</div>
           <span></span><div class="steps" data-p="V"><button data-d="-1">−1</button><button data-d="-0.1">−0.1</button><button data-d="-0.01">−0.01</button><button data-d="0.01">+0.01</button><button data-d="0.1">+0.1</button><button data-d="1">+1</button></div>
-          <span>Current</span><div class="row" style="margin:0"><input id="setI" type="number" step="0.01" min="0" value="0"> A</div>
+          <span>Current</span><div class="row m0"><input id="setI" type="number" step="0.01" min="0" value="0"> A</div>
           <span></span><div class="steps" data-p="I"><button data-d="-1">−1</button><button data-d="-0.1">−0.1</button><button data-d="-0.01">−0.01</button><button data-d="0.01">+0.01</button><button data-d="0.1">+0.1</button><button data-d="1">+1</button></div>
         </div>
-        <div class="row" style="margin-top:10px"><button class="primary" id="btnApply">Apply V &amp; I</button><button id="btnSync" title="Load the supply's current setpoints into the fields">⟳ Sync from supply</button><button id="btnLock">Lock keys</button></div>
+        <div class="row mt10"><button class="primary" id="btnApply">Apply V &amp; I</button><button id="btnSync" title="Load the supply's current setpoints into the fields now">⟳ Sync now</button><button id="btnLock">Lock keys</button></div>
+        <div class="row"><label title="When on, the fields follow setpoint changes made on the front panel, by presets or by tools. When off, they change only when you type, press Sync now, or connect."><input type="checkbox" id="autoSync" checked> Auto-sync fields from supply</label></div>
         <div class="row"><span class="muted">Backlight</span><input id="bled" type="range" min="0" max="5" step="1" value="3"><span id="bledVal" class="muted">3</span></div>
-        <div class="muted">Enter in a field applies it. Step buttons apply immediately. An orange field holds a value not yet sent to the supply.</div>
+        <div class="muted">Enter in a field applies it. Step buttons apply immediately. An orange field differs from the supply's setpoint (not yet sent, or changed on the supply while auto-sync is off).</div>
       </fieldset>
     </section>
 
@@ -169,7 +82,7 @@ input.dirty{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset}
           <span>OCP</span><div><input id="pOCP" type="number" step="0.01" min="0"> A</div>
           <span>OPP</span><div><input id="pOPP" type="number" step="0.1" min="0"> W</div>
         </div>
-        <div class="row" style="margin-top:8px"><button id="btnProtRead">Read</button><button class="primary" id="btnProtWrite">Write</button></div>
+        <div class="row mt8"><button id="btnProtRead">Read</button><button class="primary" id="btnProtWrite">Write</button></div>
         <div class="muted">Writes the active data group M0 (registers 0x52–0x54).</div>
       </fieldset>
     </section>
@@ -178,7 +91,7 @@ input.dirty{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset}
   <div class="col">
     <section class="card">
       <h2>Live chart
-        <span class="row" style="margin:0">
+        <span class="row m0">
           <select id="chWin"><option value="30">30 s</option><option value="60" selected>1 min</option><option value="300">5 min</option><option value="900">15 min</option><option value="3600">1 h</option><option value="0">All</option></select>
           <button id="btnPause">Pause</button><button id="btnChClear">Clear</button>
         </span>
@@ -198,9 +111,10 @@ input.dirty{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset}
         <div class="stat"><b id="stImax">--</b><span>I max A</span></div>
         <div class="stat"><b id="stPmax">--</b><span>P max W</span></div>
         <div class="stat"><b id="stRate">--</b><span>samples / s</span></div>
+        <div class="stat"><b id="stRtt">--</b><span>read round-trip ms</span></div>
         <div class="stat"><b id="stComm">0 / 0</b><span>frames ok / failed</span></div>
       </div>
-      <div class="row" style="margin-top:10px">
+      <div class="row mt10">
         <button id="btnResetCnt">Reset counters</button>
         <button id="btnRec">● Record</button><span id="recInfo" class="muted">0 rows</span>
         <button id="btnExportCsv">Export CSV</button><button id="btnClearRec">Clear log</button>
@@ -233,16 +147,16 @@ input.dirty{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset}
           <div id="rpStatus" class="muted">Idle</div>
         </div>
         <div>
-          <div class="row" style="margin-top:0"><b>Sweep result</b><span class="muted" id="swInfo">0 points</span><button id="btnSwCsv">Export sweep CSV</button></div>
+          <div class="row mt0"><b>Sweep result</b><span class="muted" id="swInfo">0 points</span><button id="btnSwCsv">Export sweep CSV</button></div>
           <div class="muted">One point is captured at the end of each dwell: setpoint, measured U, I, P and mode.</div>
-          <div class="scroll" style="max-height:220px"><table><thead><tr><th>Set</th><th>U V</th><th>I A</th><th>P W</th><th>Mode</th></tr></thead><tbody id="swBody"></tbody></table></div>
+          <div class="scroll mh220"><table><thead><tr><th>Set</th><th>U V</th><th>I A</th><th>P W</th><th>Mode</th></tr></thead><tbody id="swBody"></tbody></table></div>
         </div>
       </div>
     </div>
 
     <div class="pane" id="pane-seq">
       <div class="scroll"><table><thead><tr><th>#</th><th>Voltage V</th><th>Current A</th><th>Output</th><th>Duration s</th><th></th></tr></thead><tbody id="sqBody"></tbody></table></div>
-      <div class="row"><button id="btnSqAdd">+ Add step</button><span class="muted">Loops (0 = forever)</span><input id="sqLoops" type="number" min="0" value="1" style="width:70px">
+      <div class="row"><button id="btnSqAdd">+ Add step</button><span class="muted">Loops (0 = forever)</span><input class="w70" id="sqLoops" type="number" min="0" value="1">
         <label><input type="checkbox" id="sqOffEnd" checked> Output OFF when finished</label>
         <button id="btnSqSave">Save JSON</button><button id="btnSqLoad">Load JSON</button><input type="file" id="sqFile" accept=".json" hidden></div>
       <fieldset class="needconn" disabled><div class="row"><button class="primary" id="btnSeq">Run sequence</button><button class="danger toolstop">Stop</button></div></fieldset>
@@ -250,9 +164,9 @@ input.dirty{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset}
     </div>
 
     <div class="pane" id="pane-cut">
-      <div class="muted" style="margin-bottom:8px">When armed, the output switches OFF as soon as any enabled condition is met. Typical use: CC/CV battery charging with a termination current.</div>
+      <div class="muted mb8">When armed, the output switches OFF as soon as any enabled condition is met. Typical use: CC/CV battery charging with a termination current.</div>
       <div class="scroll"><table>
-        <tr><td><label><input type="checkbox" id="cuI"> Current falls below</label></td><td><input id="cuIv" type="number" step="0.01" value="0.1"> A for <input id="cuIt" type="number" value="10" style="width:60px"> s, checked after <input id="cuGrace" type="number" value="10" style="width:60px"> s</td></tr>
+        <tr><td><label><input type="checkbox" id="cuI"> Current falls below</label></td><td><input id="cuIv" type="number" step="0.01" value="0.1"> A for <input class="w60" id="cuIt" type="number" value="10"> s, checked after <input class="w60" id="cuGrace" type="number" value="10"> s</td></tr>
         <tr><td><label><input type="checkbox" id="cuU"> Voltage reaches</label></td><td><input id="cuUv" type="number" step="0.01" value="14.4"> V</td></tr>
         <tr><td><label><input type="checkbox" id="cuIm"> Current reaches</label></td><td><input id="cuImv" type="number" step="0.01" value="5"> A</td></tr>
         <tr><td><label><input type="checkbox" id="cuP"> Power reaches</label></td><td><input id="cuPv" type="number" step="0.1" value="100"> W</td></tr>
@@ -267,7 +181,7 @@ input.dirty{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset}
 
     <div class="pane" id="pane-mem">
       <fieldset class="needconn" disabled>
-        <div class="row" style="margin-top:0"><button class="primary" id="btnMemRead">Read all groups</button><span class="muted">M0 = power-on/active group · M1, M2 = quick-recall groups · M3–M9 = storage</span></div>
+        <div class="row mt0"><button class="primary" id="btnMemRead">Read all groups</button><span class="muted">M0 = power-on/active group · M1, M2 = quick-recall groups · M3–M9 = storage</span></div>
         <div class="scroll"><table><thead><tr><th>Group</th><th>U V</th><th>I A</th><th>OVP V</th><th>OCP A</th><th>OPP W</th><th>Backlight</th><th>Output at power-on</th><th></th></tr></thead><tbody id="memBody"></tbody></table></div>
       </fieldset>
     </div>
@@ -276,16 +190,16 @@ input.dirty{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset}
       <div class="split">
         <div>
           <fieldset class="needconn" disabled>
-            <div class="row" style="margin-top:0"><b>Read</b> start <input id="cnRs" value="0x00" style="width:80px"> count <input id="cnRn" type="number" value="13" min="1" max="32" style="width:60px"><button id="btnCnRead">Read (0x03)</button></div>
-            <div class="row"><b>Write</b> reg <input id="cnWr" value="0x09" style="width:80px"> value <input id="cnWv" value="0" style="width:80px"><button id="btnCnWrite">Write (0x06)</button></div>
+            <div class="row mt0"><b>Read</b> start <input class="w80" id="cnRs" value="0x00"> count <input class="w60" id="cnRn" type="number" value="13" min="1" max="32"><button id="btnCnRead">Read (0x03)</button></div>
+            <div class="row"><b>Write</b> reg <input class="w80" id="cnWr" value="0x09"> value <input class="w80" id="cnWv" value="0"><button id="btnCnWrite">Write (0x06)</button></div>
           </fieldset>
-          <div class="scroll" style="max-height:200px"><table><thead><tr><th>Reg</th><th>Name</th><th>Hex</th><th>Dec</th></tr></thead><tbody id="cnOut"></tbody></table></div>
-          <details style="margin-top:8px"><summary class="muted">Register map</summary>
+          <div class="scroll mh200"><table><thead><tr><th>Reg</th><th>Name</th><th>Hex</th><th>Dec</th></tr></thead><tbody id="cnOut"></tbody></table></div>
+          <details class="mt8"><summary class="muted">Register map</summary>
             <table id="regMap"></table>
           </details>
         </div>
         <div>
-          <div class="row" style="margin-top:0"><b>Frame log</b><label><input type="checkbox" id="logPoll"> include polling</label><label><input type="checkbox" id="logFollow" checked> follow</label><button id="btnLogClear">Clear</button></div>
+          <div class="row mt0"><b>Frame log</b><label><input type="checkbox" id="logPoll"> include polling</label><label><input type="checkbox" id="logFollow" checked> follow</label><button id="btnLogClear">Clear</button></div>
           <div class="log" id="log"></div>
         </div>
       </div>
@@ -294,7 +208,7 @@ input.dirty{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset}
 </main>
 <div id="toast"></div>
 
-<script type="application/json" id="devicesBuiltin">{"_comment":"Device list for dps-control.html. Edit freely: the page builds its Device dropdown from this file. 'model' is the value of register 0x0B used for auto-detection. Scales are the register multipliers (value = register / scale). 'appLimits' are soft limits enforced by the page for the protection fields, not device specifications.","schema":1,"defaults":{"baud":9600,"address":1,"bauds":[2400,4800,9600,19200],"pollMs":500,"timeoutMs":300},"devices":[{"id":"DPS5015","model":5015,"type":"Buck","verified":true,"vMax":50,"iMax":15,"pMax":750,"scale":{"v":100,"iSet":100,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":52,"ocp":15.5,"opp":760}},{"id":"DPS5020","model":5020,"type":"Buck","verified":true,"vMax":50,"iMax":20,"pMax":1000,"scale":{"v":100,"iSet":100,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":52,"ocp":20.5,"opp":1010}},{"id":"DPS3005","model":3005,"type":"Buck","verified":true,"vMax":30,"iMax":5,"pMax":160,"scale":{"v":100,"iSet":1000,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":32,"ocp":5.2,"opp":170}},{"id":"DPS5005","model":5005,"type":"Buck","verified":true,"vMax":50,"iMax":5,"pMax":250,"scale":{"v":100,"iSet":1000,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":52,"ocp":5.2,"opp":260}},{"id":"DPS8005","model":8005,"type":"Buck","verified":true,"vMax":80,"iMax":5.1,"pMax":408,"scale":{"v":100,"iSet":1000,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":82,"ocp":5.3,"opp":420}},{"id":"DPH5005","model":5205,"type":"Buck/Boost","verified":true,"vMax":50,"iMax":5,"pMax":250,"scale":{"v":100,"iSet":1000,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":52,"ocp":5.2,"opp":260}},{"id":"DPH3205","model":3205,"type":"Buck/Boost","verified":false,"vMax":32,"iMax":5,"pMax":160,"scale":{"v":100,"iSet":1000,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":34,"ocp":5.2,"opp":170},"notes":"Model register value and scaling not confirmed by any source"}]}</script>
+<script type="application/json" id="devicesBuiltin">{"_comment":"Device list for dps-control.html. Edit freely: the page builds its Device dropdown from this file. 'model' is the value of register 0x0B used for auto-detection. Scales are the register multipliers (value = register / scale). 'appLimits' are soft limits enforced by the page for the protection fields, not device specifications.","schema":1,"defaults":{"baud":9600,"address":1,"bauds":[2400,4800,9600,19200],"pollMs":100,"timeoutMs":300},"devices":[{"id":"DPS5015","model":5015,"type":"Buck","verified":true,"vMax":50,"iMax":15,"pMax":750,"scale":{"v":100,"iSet":100,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":52,"ocp":15.5,"opp":760}},{"id":"DPS5020","model":5020,"type":"Buck","verified":true,"vMax":50,"iMax":20,"pMax":1000,"scale":{"v":100,"iSet":100,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":52,"ocp":20.5,"opp":1010}},{"id":"DPS3005","model":3005,"type":"Buck","verified":true,"vMax":30,"iMax":5,"pMax":160,"scale":{"v":100,"iSet":1000,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":32,"ocp":5.2,"opp":170}},{"id":"DPS5005","model":5005,"type":"Buck","verified":true,"vMax":50,"iMax":5,"pMax":250,"scale":{"v":100,"iSet":1000,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":52,"ocp":5.2,"opp":260}},{"id":"DPS8005","model":8005,"type":"Buck","verified":true,"vMax":80,"iMax":5.1,"pMax":408,"scale":{"v":100,"iSet":1000,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":82,"ocp":5.3,"opp":420}},{"id":"DPH5005","model":5205,"type":"Buck/Boost","verified":true,"vMax":50,"iMax":5,"pMax":250,"scale":{"v":100,"iSet":1000,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":52,"ocp":5.2,"opp":260}},{"id":"DPH3205","model":3205,"type":"Buck/Boost","verified":false,"vMax":32,"iMax":5,"pMax":160,"scale":{"v":100,"iSet":1000,"iOut":100,"opp":10},"baud":9600,"address":1,"appLimits":{"ovp":34,"ocp":5.2,"opp":170},"notes":"Model register value and scaling not confirmed by any source"}]}</script>
 <script>
 'use strict';
 /* ============================== helpers ============================== */
@@ -476,7 +390,7 @@ class SimTransport {
 }
 
 class Modbus {
-  constructor(t, addr, baud) { this.t = t; this.addr = addr; this.q = Promise.resolve(); this.timeout = 300; this.retries = 3; this.gap = Math.max(5, 3.5 * 11000 / baud); }
+  constructor(t, addr, baud) { this.t = t; this.addr = addr; this.q = Promise.resolve(); this.timeout = 300; this.retries = 3; this.gap = Math.max(2, 3.5 * 11000 / baud); this.onWrite = null; }
   run(fn) { const p = this.q.then(fn, fn); this.q = p.catch(() => {}); return p; }
   async txn(pdu, expect, tag) {
     const f = withCrc([this.addr, ...pdu]);
@@ -504,12 +418,12 @@ class Modbus {
       const out = []; for (let k = 0; k < n; k++) out.push((r[3 + 2 * k] << 8) | r[4 + 2 * k]); return out;
     });
   }
-  write(reg, v, tag) { v = Math.round(v) & 0xFFFF; return this.run(() => this.txn([6, reg >> 8, reg & 255, v >> 8, v & 255], 8, tag)); }
+  write(reg, v, tag) { v = Math.round(v) & 0xFFFF; return this.run(() => this.txn([6, reg >> 8, reg & 255, v >> 8, v & 255], 8, tag)).then(r => { this.onWrite?.(); return r; }); }
   writeMany(start, vals, tag) {
     vals = vals.map(v => Math.round(v) & 0xFFFF);
     const pdu = [16, start >> 8, start & 255, 0, vals.length, vals.length * 2];
     vals.forEach(v => pdu.push(v >> 8, v & 255));
-    return this.run(() => this.txn(pdu, 8, tag));
+    return this.run(() => this.txn(pdu, 8, tag)).then(r => { this.onWrite?.(); return r; });
   }
 }
 
@@ -552,11 +466,11 @@ function parseDevices(j) {
   const def = j.defaults || {};
   const list = j.devices.map(d => normDevice(d, def));
   const ids = new Set(); list.forEach(d => { if (ids.has(d.id)) throw new Error('duplicate id ' + d.id); ids.add(d.id); });
-  return { defaults: { baud: +def.baud || 9600, address: +def.address || 1, bauds: (def.bauds || [2400, 4800, 9600, 19200]).map(Number), pollMs: +def.pollMs || 500, timeoutMs: +def.timeoutMs || 300 }, list };
+  return { defaults: { baud: +def.baud || 9600, address: +def.address || 1, bauds: (def.bauds || [2400, 4800, 9600, 19200]).map(Number), pollMs: +def.pollMs || 100, timeoutMs: +def.timeoutMs || 300 }, list };
 }
 async function loadDevices() {
   const tries = [
-    async () => { const r = await fetch('devices.json', { cache: 'no-store' }); if (!r.ok) throw new Error(r.status); return [await r.json(), 'devices.json']; },
+    async () => { if (location.protocol === 'file:') throw new Error('file:// cannot fetch'); const r = await fetch('devices.json', { cache: 'no-store' }); if (!r.ok) throw new Error(r.status); return [await r.json(), 'devices.json']; },
     async () => { const j = store.get('devicesJson', null); if (!j) throw new Error('none'); return [j, 'loaded copy']; },
     async () => [JSON.parse($('#devicesBuiltin').textContent), 'built-in']
   ];
@@ -659,6 +573,7 @@ async function connect(sim) {
   } catch (e) { setStatus('', 'Disconnected'); if (e.name !== 'NotFoundError') toast('Open failed: ' + e.message, true); return; }
   S.t = t; S.sim = sim;
   S.mb = new Modbus(t, addr, baud); S.mb.timeout = parseInt($('#timeout').value, 10) || 300;
+  S.mb.onWrite = kickPoll; S.polling = false; S.kick = false; S.rtt = null;
   try {
     const [m, v] = await S.mb.read(REG.MODEL, 2, 'init');
     S.model = m; S.version = v;
@@ -692,19 +607,35 @@ if ('serial' in navigator) {
 } else $('#noSerial').classList.add('show');
 
 /* ============================== polling ============================== */
+/* Polls at the chosen interval. After any write the next read happens immediately, then the page polls
+   as fast as the link allows for 1.5 s so the output settling is visible, then returns to the interval. */
+const pollInterval = () => Math.max(50, parseInt($('#poll').value, 10) || 100);
 async function poll() {
+  clearTimeout(S.pollTimer); S.pollTimer = null;
   if (!S.connected) return;
+  if (S.polling) { S.kick = true; return; }
+  S.polling = true; S.kick = false;
+  const t0 = performance.now();
   try {
     const r = await S.mb.read(0, 13, 'poll');
+    const rtt = performance.now() - t0; S.rtt = S.rtt == null ? rtt : S.rtt * 0.8 + rtt * 0.2;
     S.failStreak = 0; if (!S.sim) setStatus('ok', 'Connected');
     onSample(r);
   } catch (e) {
-    if (!S.connected) return;
+    if (!S.connected) { S.polling = false; return; }
     S.failStreak++; if (S.failStreak >= 3) setStatus('err', 'No response');
     updateStats();
-  } finally {
-    if (S.connected) S.pollTimer = setTimeout(poll, Math.max(100, parseInt($('#poll').value, 10) || 500));
   }
+  S.polling = false;
+  if (!S.connected) return;
+  const fast = performance.now() < (S.fastUntil || 0);
+  const wait = S.kick ? 0 : fast ? Math.min(pollInterval(), 20) : Math.max(0, pollInterval() - (performance.now() - t0));
+  S.pollTimer = setTimeout(poll, wait);
+}
+function kickPoll() {
+  if (!S.connected) return;
+  S.fastUntil = performance.now() + 1500;
+  if (S.polling) S.kick = true; else poll();
 }
 
 function onSample(r) {
@@ -744,7 +675,7 @@ function syncSetpointInputs(s) {
   const prev = S.devSet || {};
   [['#setV', s.uset, fV, 'u', S.vs], ['#setI', s.iset, fI, 'i', S.is]].forEach(([sel, val, fmt, k, sc]) => {
     const el = $(sel), changed = prev[k] !== undefined && Math.abs(prev[k] - val) > 1e-9;
-    if (S.needFill || (changed && document.activeElement !== el)) el.value = fmt(val);
+    if (S.needFill || ($('#autoSync').checked && changed && document.activeElement !== el)) el.value = fmt(val);
   });
   S.devSet = { u: s.uset, i: s.iset }; S.needFill = false;
   markDirty();
@@ -796,17 +727,18 @@ function updateStats() {
   $('#stImax').textContent = S.max.i != null ? fIo(S.max.i) : '--'; $('#stPmax').textContent = S.max.p != null ? fP(S.max.p) : '--';
   const w = S.rateWin; $('#stRate').textContent = w.length > 1 ? ((w.length - 1) / ((w[w.length - 1] - w[0]) / 1000)).toFixed(1) : '--';
   $('#stComm').textContent = `${S.comm.ok} / ${S.comm.err}`;
+  $('#stRtt').textContent = S.rtt != null ? Math.round(S.rtt) : '--';
 }
 function resetCounters() { S.ah = 0; S.wh = 0; S.min = {}; S.max = {}; S.cntT0 = performance.now(); updateStats(); }
 
 /* ============================== chart ============================== */
 let chart = null;
 if (typeof Chart !== 'undefined') {
-  Chart.defaults.color = '#8b93a3'; Chart.defaults.borderColor = '#2a2f3a'; Chart.defaults.font.size = 11;
+  Chart.defaults.font.size = 11;
   const ds = (label, color, axis, data) => ({ label, data, borderColor: color, backgroundColor: color, yAxisID: axis, pointRadius: 0, borderWidth: 1.6, tension: 0 });
   chart = new Chart($('#chart'), {
     type: 'line',
-    data: { datasets: [ds('U (V)', '#facc15', 'yV', S.cd.v), ds('I (A)', '#38bdf8', 'yI', S.cd.i), ds('P (W)', '#f472b6', 'yP', S.cd.p)] },
+    data: { datasets: [ds('U (V)', '#888', 'yV', S.cd.v), ds('I (A)', '#888', 'yI', S.cd.i), ds('P (W)', '#888', 'yP', S.cd.p)] },
     options: {
       animation: false, parsing: false, normalized: true, responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'nearest', axis: 'x', intersect: false },
@@ -814,13 +746,34 @@ if (typeof Chart !== 'undefined') {
         tooltip: { callbacks: { title: it => it.length ? it[0].parsed.x.toFixed(1) + ' s' : '' } } },
       scales: {
         x: { type: 'linear', title: { display: true, text: 'time (s)' } },
-        yV: { position: 'left', display: 'auto', title: { display: true, text: 'V', color: '#facc15' }, beginAtZero: true },
-        yI: { position: 'right', display: 'auto', title: { display: true, text: 'A', color: '#38bdf8' }, beginAtZero: true, grid: { drawOnChartArea: false } },
-        yP: { position: 'right', display: 'auto', title: { display: true, text: 'W', color: '#f472b6' }, beginAtZero: true, grid: { drawOnChartArea: false } }
+        yV: { position: 'left', display: 'auto', title: { display: true, text: 'V' }, beginAtZero: true },
+        yI: { position: 'right', display: 'auto', title: { display: true, text: 'A' }, beginAtZero: true, grid: { drawOnChartArea: false } },
+        yP: { position: 'right', display: 'auto', title: { display: true, text: 'W' }, beginAtZero: true, grid: { drawOnChartArea: false } }
       }
     }
   });
+  themeChart();
 } else $('#chartMsg').textContent = 'Chart library could not be loaded (offline?). Everything else works.';
+
+/* Chart colours follow the CSS theme tokens */
+function themeChart() {
+  if (!chart) return;
+  const cs = getComputedStyle(document.documentElement), tok = n => cs.getPropertyValue(n).trim();
+  const mute = tok('--mute'), line = tok('--line'), col = { yV: tok('--v'), yI: tok('--i'), yP: tok('--p') };
+  chart.data.datasets.forEach(d => { d.borderColor = d.backgroundColor = col[d.yAxisID]; });
+  const sc = chart.options.scales;
+  Object.entries(sc).forEach(([k, a]) => {
+    a.ticks = { ...(a.ticks || {}), color: mute };
+    a.grid = { ...(a.grid || {}), color: line };
+    a.border = { ...(a.border || {}), color: line };
+    if (a.title) a.title.color = col[k] || mute;
+  });
+  chart.options.plugins.legend.labels.color = tok('--text');
+  chart.options.plugins.tooltip.backgroundColor = tok('--panel');
+  chart.options.plugins.tooltip.titleColor = chart.options.plugins.tooltip.bodyColor = tok('--text');
+  chart.options.plugins.tooltip.borderColor = line; chart.options.plugins.tooltip.borderWidth = 1;
+  chart.update('none');
+}
 
 function pushChart(s) {
   const c = S.cd, MAX = 60000;
@@ -861,6 +814,7 @@ $('#btnOut').onclick = () => guard(async () => {
   try {
     await setOut(turnOn);
     const r = await S.mb.read(0, 13, 'tool'); onSample(r);
+    S.fastUntil = performance.now() + 1500;
   } finally { b.classList.remove('busy'); b.disabled = false; if (S.last) updateOutSwitch(S.last); }
 });
 $('#btnLock').onclick = () => guard(() => S.mb.write(REG.LOCK, S.last && S.last.lock ? 0 : 1));
@@ -908,7 +862,7 @@ function startTool(name) {
   if (S.tool) { toast(`"${S.tool}" is already running`, true); return false; }
   S.tool = name; S.stop = false; updateToolUI(); return true;
 }
-function endTool() { S.tool = null; S.needFill = true; updateToolUI(); }
+function endTool() { S.tool = null; if ($('#autoSync').checked) S.needFill = true; updateToolUI(); }
 function updateToolUI() {
   updateSettingsLock(); updateKeepAwake();
   ['#btnRamp', '#btnSeq'].forEach(s => $(s).disabled = !!S.tool);
@@ -1114,6 +1068,7 @@ $$('.tab').forEach(t => t.onclick = () => {
   $$('.tab').forEach(x => x.classList.toggle('active', x === t));
   $$('.pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + t.dataset.tab));
 });
+try { if (store.get('pollMigrated', 0) < 1) { if (['500', '250'].includes(String(store.get('poll', '')))) localStorage.removeItem('dps.poll'); store.set('pollMigrated', 1); } } catch {}
 ['baud', 'addr', 'poll', 'timeout'].forEach(id => {
   const el = $('#' + id), v = store.get(id, null); if (v != null) el.value = v;
   el.addEventListener('change', () => {
@@ -1121,6 +1076,7 @@ $$('.tab').forEach(t => t.onclick = () => {
     if (!S.mb) return;
     if (id === 'addr') S.mb.addr = parseInt(el.value, 10) || 1;
     if (id === 'timeout') S.mb.timeout = parseInt(el.value, 10) || 300;
+    if (id === 'poll' && S.connected && !S.polling) poll();
     if (id === 'baud' && S.connected) toast('Reconnect to use the new baud rate');
   });
 });
@@ -1131,11 +1087,27 @@ $('#btnArm').addEventListener('click', () => { try { if ('Notification' in windo
 setInterval(() => {
   if (!S.connected) return;
   updateStats();
-  const pollMs = Math.max(100, parseInt($('#poll').value, 10) || 500);
+  const pollMs = pollInterval();
   const stale = S.lastT == null || performance.now() - S.lastT > 3 * pollMs + 1500;
   $$('.ro').forEach(e => e.classList.toggle('stale', stale));
   if (stale) document.title = '⚠ no data — DPS';
 }, 1000);
+
+/* theme: Auto -> Light -> Dark */
+const THEMES = { auto: '◐ Auto', light: '☀ Light', dark: '☾ Dark' };
+const mqLight = window.matchMedia ? matchMedia('(prefers-color-scheme: light)') : null;
+function applyTheme(pref) {
+  const dark = pref === 'dark' || (pref === 'auto' && !(mqLight && mqLight.matches));
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  document.documentElement.dataset.themePref = pref;
+  $('#btnTheme').textContent = THEMES[pref];
+  $('#btnTheme').title = pref === 'auto' ? `Theme: Auto (following system, now ${dark ? 'dark' : 'light'}). Click for Light.` : `Theme: ${pref}. Click to switch.`;
+  themeChart();
+}
+let themePref = store.get('theme', 'auto'); if (!THEMES[themePref]) themePref = 'auto';
+applyTheme(themePref);
+$('#btnTheme').onclick = () => { const k = Object.keys(THEMES); themePref = k[(k.indexOf(themePref) + 1) % k.length]; store.set('theme', themePref); applyTheme(themePref); };
+mqLight?.addEventListener?.('change', () => { if (themePref === 'auto') applyTheme('auto'); });
 
 /* settings panel */
 $('#btnSettings').onclick = () => { const on = $('#settings').classList.toggle('show'); $('#btnSettings').classList.toggle('active', on); store.set('settingsOpen', on); };
@@ -1145,6 +1117,8 @@ $('#rememberPort').onchange = () => store.set('rememberPort', $('#rememberPort')
 
 /* setpoint fields */
 $('#btnSync').onclick = syncNow;
+$('#autoSync').checked = store.get('autoSync', true);
+$('#autoSync').onchange = () => { store.set('autoSync', $('#autoSync').checked); if ($('#autoSync').checked) syncNow(); };
 ['#setV', '#setI'].forEach(sel => { $(sel).addEventListener('input', markDirty); $(sel).addEventListener('blur', markDirty); });
 
 /* simulator load: slider is logarithmic 0.1 Ω … 1 kΩ */
