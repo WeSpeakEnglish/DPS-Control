@@ -30,7 +30,7 @@ The supply must be the **communication version** (sold with a USB or Bluetooth m
 
 The list above is what ships in `devices.json`. In **⚙ Settings → Device** you can leave **Auto-detect** (the device is identified from register 0x0B) or pick a device, which presets its baud rate and address and applies its limits. For a model number that is not in the list, the app guesses limits from the number (e.g. 5015 → 50 V / 15 A) and marks it "unverified device".
 
-> **Tested status:** the logic was tested against the built-in simulator, not on physical hardware. Register addresses and scaling come from the sources listed at the end. If a reading is off by ×10, choose the model manually and report it.
+> **Tested status:** DPS5015 confirmed on real hardware. The other models were tested against the built-in simulator only; their register addresses and scaling come from the sources listed at the end. If a reading is off by ×10, choose the model manually and report it.
 
 ### Not compatible
 
@@ -107,7 +107,7 @@ Only `id`, `model`, `vMax` and `iMax` are required; everything else has defaults
 ## Quick start
 
 1. Keep `dps-control.html`, `dps-control.css` and `devices.json` in one folder and open the HTML in desktop Chrome or Edge (double-click works, file:// is fine).
-2. In **⚙ Settings** pick your **Device** (or leave Auto-detect), check **Baud** and **Addr** match the supply, click **Connect** and pick the COM port. Next time the same USB adapter reconnects without the picker.
+2. In **⚙ Settings** pick your **Device** (or leave Auto-detect), check **Baud** and **Addr** match the supply, click **Connect** and pick the COM port. Next time the same USB adapter reconnects without the picker. To choose the port every time (for example with two identical adapters on two supplies), untick **Reconnect to last port without asking** in Settings.
 3. The model is read from register 0x0B. With Auto-detect the matching device from the list is used; if you picked a device and the supply reports a different model, you get a warning.
 4. **Esc** turns the output off immediately and stops every running tool.
 5. With **Auto-sync fields from supply** ticked (default), the setpoint fields follow changes made on the front panel, by presets or by tools. Untick it to keep your typed values; an orange field then shows it differs from the supply. **⟳ Sync now** reloads them on demand.
@@ -117,7 +117,7 @@ Only `id`, `model`, `vMax` and `iMax` are required; everything else has defaults
 9. **Chart time axis:** pick **Elapsed hh:mm:ss.s** (default, time since the chart started or was cleared), **Seconds** (e.g. 125.0 s) or **Time of day** (e.g. 12:14:03.5) in the chart header. Ticks fall on round steps, and the choice is remembered.
 10. **Logging rate:** next to **● Record**, choose **As received** (one CSV row per reading) or **Every [N] s** (N = 1, 2, 3 … whole seconds). In Every mode the page takes a fresh reading on each boundary, and the CSV column `rec_s` reads exactly 0, N, 2N … seconds since recording started; `timestamp` is the real time of that reading and `chart_t_s` the chart time. The setting is remembered.
 
-No hardware at hand? Click **Simulator**. It emulates the device chosen in Settings (Auto-detect = DPS5015) with an adjustable resistive load, realistic output settling and ~1 % dropped frames.
+No hardware at hand? Click **Simulator**. It emulates the device chosen in Settings (Auto-detect = DPS5015) with an adjustable resistive load, realistic output settling, the input-voltage limit of a buck converter (output tops out at about 90 % of the input, shown as **INPUT LIMIT**) and ~1 % dropped frames.
 
 ---
 
@@ -180,4 +180,5 @@ Other corrections from the document: CV/CC lists "CV" for both values (1 is CC);
 
 - DPS3005 CNC Communication Protocol V1.2 (RD Tech): https://wpsodp.ee.ntust.edu.tw/chapter_02/DPS3005%20CNC%20Communication%20%20Protocol%20V1.2.pdf
 - DPS5020 communication protocol, English translation V1.2: https://redmine.laas.fr/attachments/download/4753/DPS5020communication%20protocol%20-english%20translation%20V1.2.pdf
+- rdserialtool (independent DPS register map and model list, used to cross-check the protocol document): https://github.com/rfinnie/rdserialtool
 - Riden RD60xx Modbus protocol (to show it is a different map): https://www.joy-it.net/files/files/Produkte/JT-PS1440-C-Pro/MODBUS_Protocol_RD60xx_PSxx.pdf
