@@ -136,6 +136,8 @@ input.dirty { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn) inset
 button.mini { padding: 1px 8px; font-size: 12px; border-radius: 5px; }
 .unsent button.mini[data-act=send] { background: var(--acc); border-color: var(--acc); color: var(--on-acc); }
 .unsent[hidden] { display: none; }
+#recEveryBox { display: inline-flex; align-items: center; gap: 4px; }
+#recEveryBox[hidden] { display: none; }
 
 button { cursor: pointer; }
 button:hover:not(:disabled) { border-color: var(--line-hover); }

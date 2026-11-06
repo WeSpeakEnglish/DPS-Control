@@ -113,6 +113,7 @@ Only `id`, `model`, `vMax` and `iMax` are required; everything else has defaults
 7. The browser tab title shows live V / A, readouts grey out as *stale* if the supply stops answering, and the screen is kept awake while a tool, cutoff or recording is running.
 8. **Theme:** the header button cycles **◐ Auto** (follows your system light/dark setting) → **☀ Light** → **☾ Dark**. The choice is remembered, and the chart follows the theme. To change colours, edit the tokens at the top of `dps-control.css`.
 9. **Chart time axis:** pick **Elapsed hh:mm:ss.s** (default, time since the chart started or was cleared), **Seconds** (e.g. 125.0 s) or **Time of day** (e.g. 12:14:03.5) in the chart header. Ticks fall on round steps, and the choice is remembered.
+10. **Logging rate:** next to **● Record**, choose **As received** (one CSV row per reading) or **Every [N] s** (one row per N-second interval, counted from when recording starts; the first row is written immediately). The setting is remembered.
 
 No hardware at hand? Click **Simulator**. It emulates the device chosen in Settings (Auto-detect = DPS5015) with an adjustable resistive load, realistic output settling and ~1 % dropped frames.
 

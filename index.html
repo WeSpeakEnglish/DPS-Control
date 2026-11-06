@@ -117,6 +117,8 @@
       </div>
       <div class="row mt10">
         <button id="btnResetCnt">Reset counters</button>
+        <span class="f">Log <select id="recMode" title="How often a row is written while recording"><option value="all">As received</option><option value="every">Every</option></select>
+          <span id="recEveryBox" hidden><input id="recEvery" class="w70" type="number" min="0.1" step="0.1" value="1"> s</span></span>
         <button id="btnRec">● Record</button><span id="recInfo" class="muted">0 rows</span>
         <button id="btnExportCsv">Export CSV</button><button id="btnClearRec">Clear log</button>
       </div>
@@ -668,9 +670,9 @@ function onSample(r) {
 
   updateReadouts(s);
   pushChart(s);
-  if (S.rec) {
-    S.recRows.push([new Date().toISOString(), s.t.toFixed(3), fV(s.uset), fI(s.iset), fV(s.u), fIo(s.i), s.p.toFixed(3), fV(s.uin), s.cc ? 'CC' : 'CV', s.on ? 1 : 0, PROT[s.prot] || s.prot, S.ah.toFixed(6), S.wh.toFixed(6)]);
-    $('#recInfo').textContent = S.recRows.length + ' rows';
+  if (S.rec && recDue(now)) {
+    S.recRows.push([new Date().toISOString(), s.t.toFixed(3), fV(s.uset), fI(s.iset), fV(s.u), fIo(s.i), s.p.toFixed(3), fV(s.uin), s.drop ? 'INPUT LIMIT' : s.cc ? 'CC' : 'CV', s.on ? 1 : 0, PROT[s.prot] || s.prot, S.ah.toFixed(6), S.wh.toFixed(6)]);
+    recInfoText();
   }
   checkCutoff(s, now);
   updateStats();
@@ -914,8 +916,36 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') emergencyOff
 
 /* ============================== logging ============================== */
 $('#btnResetCnt').onclick = resetCounters;
-$('#btnRec').onclick = () => { S.rec = !S.rec; updateKeepAwake(); $('#btnRec').textContent = S.rec ? '■ Stop recording' : '● Record'; $('#btnRec').classList.toggle('danger', S.rec); };
-$('#btnClearRec').onclick = () => { S.recRows = []; $('#recInfo').textContent = '0 rows'; };
+/* Recording rate: "As received" writes every reading; "Every N s" writes the latest reading once per
+   N-second slot, counted from when recording started (first row immediately). */
+const recEveryMs = () => Math.max(100, (parseFloat($('#recEvery').value) || 1) * 1000);
+function recDue(now) {
+  if ($('#recMode').value !== 'every') return true;
+  if (S.recStart == null) S.recStart = now;
+  if (now < (S.recNext || 0)) return false;
+  const n = recEveryMs();
+  S.recNext = S.recStart + (Math.floor((now - S.recStart) / n + 1e-6) + 1) * n;
+  return true;
+}
+function recInfoText() {
+  const mode = $('#recMode').value === 'every' ? ` · every ${parseFloat($('#recEvery').value) || 1} s` : ' · as received';
+  $('#recInfo').textContent = S.recRows.length + ' rows' + mode;
+}
+function onRecModeChange() {
+  $('#recEveryBox').hidden = $('#recMode').value !== 'every';
+  store.set('recMode', $('#recMode').value); store.set('recEvery', $('#recEvery').value);
+  S.recStart = S.rec ? performance.now() : null; S.recNext = 0;
+  recInfoText();
+}
+$('#recMode').value = store.get('recMode', 'all') === 'every' ? 'every' : 'all';
+$('#recEvery').value = store.get('recEvery', '1');
+$('#recMode').onchange = onRecModeChange; $('#recEvery').onchange = onRecModeChange;
+onRecModeChange();
+$('#btnRec').onclick = () => {
+  S.rec = !S.rec; S.recStart = S.rec ? performance.now() : null; S.recNext = 0;
+  updateKeepAwake(); $('#btnRec').textContent = S.rec ? '■ Stop recording' : '● Record'; $('#btnRec').classList.toggle('danger', S.rec);
+};
+$('#btnClearRec').onclick = () => { S.recRows = []; recInfoText(); };
 $('#btnExportCsv').onclick = () => {
   if (!S.recRows.length) { toast('Nothing recorded yet. Press Record first.', true); return; }
   const head = 'timestamp,t_s,u_set_V,i_set_A,u_out_V,i_out_A,p_W,u_in_V,mode,output,protect,Ah,Wh';
