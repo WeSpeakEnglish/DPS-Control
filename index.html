@@ -977,7 +977,8 @@ function startTool(name) {
 function endTool() { S.tool = null; if ($('#autoSync').checked) S.needFill = true; updateToolUI(); }
 function updateToolUI() {
   updateSettingsLock(); updateKeepAwake();
-  ['#btnRamp', '#btnSeq'].forEach(s => $(s).disabled = !!S.tool);
+  const names = { ramp: 'Ramp', seq: 'Sequence' };
+  ['#btnRamp', '#btnSeq'].forEach(s => { $(s).disabled = !!S.tool; $(s).title = S.tool ? `${names[S.tool] || S.tool} is running. Stop it first.` : ''; });
   $$('.toolstop').forEach(b => b.disabled = !S.tool);
 }
 $$('.toolstop').forEach(b => b.onclick = () => { S.stop = true; });

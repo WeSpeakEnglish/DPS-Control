@@ -131,11 +131,6 @@ input[type=number] { width: 90px; }
 input[type=range] { padding: 0; accent-color: var(--acc); }
 input[type=checkbox] { accent-color: var(--acc); }
 input.dirty { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn) inset; }
-.unsent { display: inline-flex; align-items: center; gap: 5px; flex-wrap: nowrap; white-space: nowrap; font-size: 12px; color: var(--warn); }
-.unsent .msg { font-weight: 600; }
-button.mini { padding: 1px 8px; font-size: 12px; border-radius: 5px; }
-.unsent button.mini[data-act=send] { background: var(--acc); border-color: var(--acc); color: var(--on-acc); }
-.unsent[hidden] { display: none; }
 #recEveryBox { display: inline-flex; align-items: center; gap: 4px; }
 #recEveryBox[hidden] { display: none; }
 
@@ -295,6 +290,11 @@ fieldset:disabled .outbtn { background: var(--panel2); border-color: var(--line)
 .tab.active { color: var(--text); border-bottom-color: var(--acc); }
 .pane { display: none; }
 .pane.active { display: block; }
+/* Explain why tool buttons are disabled */
+.pane fieldset.needconn:disabled::after {
+  content: 'Connect to a supply (or start the Simulator) to use this.';
+  display: block; margin-top: 4px; font-size: 12px; color: var(--warn);
+}
 
 .progress { height: 6px; background: var(--panel2); border-radius: 3px; overflow: hidden; margin: 8px 0; }
 .progress > i { display: block; height: 100%; width: 0; background: var(--acc); transition: width .2s; }
