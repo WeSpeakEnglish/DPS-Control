@@ -1,6 +1,8 @@
 # DPS Control – Web Serial controller for RD Tech (Riden) DPS & DPH power supplies
+<img width="1900" height="993" alt="Screenshot 2026-11-06 123735" src="https://github.com/user-attachments/assets/f55ef731-32b8-47d0-8968-c5caac75249c" />
+<img width="1920" height="1440" alt="9c778eb2-7ba4-4702-b33f-47353a60ad6d" src="https://github.com/user-attachments/assets/1122ae23-1886-40d0-804e-9198807601b2" />
 
-`dps-control.html` is a browser app for controlling a DPS-series programmable power module from a PC over its serial port: live readout, chart, logging, ramp/I-V sweep, sequences, auto cutoff, memory groups M0–M9, raw Modbus console and a simulator.
+DPS Control is a browser app for controlling a DPS-series programmable power module from a PC over its serial port: live readout, chart, logging, ramp/I-V sweep, sequences, auto cutoff, memory groups M0–M9, raw Modbus console and a simulator.
 
 It needs only desktop **Chrome or Edge** (Web Serial) and talks **Modbus RTU** directly to the supply. Nothing to install, no vendor software.
 
