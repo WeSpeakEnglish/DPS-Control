@@ -62,9 +62,9 @@
       <h2>Setpoints</h2>
       <fieldset class="needconn" disabled>
         <div class="grid2">
-          <span>Voltage</span><div class="row m0"><input id="setV" type="number" step="0.01" min="0" value="0"> V</div>
+          <span>Voltage</span><div class="row m0"><input id="setV" type="number" step="0.01" min="0" value="0"> V <span class="unsent" id="setVHint" hidden></span></div>
           <span></span><div class="steps" data-p="V"><button data-d="-1">−1</button><button data-d="-0.1">−0.1</button><button data-d="-0.01">−0.01</button><button data-d="0.01">+0.01</button><button data-d="0.1">+0.1</button><button data-d="1">+1</button></div>
-          <span>Current</span><div class="row m0"><input id="setI" type="number" step="0.01" min="0" value="0"> A</div>
+          <span>Current</span><div class="row m0"><input id="setI" type="number" step="0.01" min="0" value="0"> A <span class="unsent" id="setIHint" hidden></span></div>
           <span></span><div class="steps" data-p="I"><button data-d="-1">−1</button><button data-d="-0.1">−0.1</button><button data-d="-0.01">−0.01</button><button data-d="0.01">+0.01</button><button data-d="0.1">+0.1</button><button data-d="1">+1</button></div>
         </div>
         <div class="row mt10"><button class="primary" id="btnApply">Apply V &amp; I</button><button id="btnSync" title="Load the supply's current setpoints into the fields now">⟳ Sync now</button><button id="btnLock">Lock keys</button></div>
@@ -92,6 +92,7 @@
     <section class="card">
       <h2>Live chart
         <span class="row m0">
+          <select id="chTime" title="Time axis format"><option value="elapsed">Elapsed hh:mm:ss.s</option><option value="seconds">Seconds</option><option value="clock">Time of day</option></select>
           <select id="chWin"><option value="30">30 s</option><option value="60" selected>1 min</option><option value="300">5 min</option><option value="900">15 min</option><option value="3600">1 h</option><option value="0">All</option></select>
           <button id="btnPause">Pause</button><button id="btnChClear">Clear</button>
         </span>
@@ -340,6 +341,7 @@ class SimTransport {
     if (r[REG.ONOFF]) {
       const uset = r[0] / 100, iset = r[1] / d.is;
       ut = uset; if (ut / R > iset) { ut = iset * R; cc = true; }
+      const umax = 0.9 * this.uin / 100; if (ut > umax) { ut = umax; cc = true; }
     }
     this.uAct += (ut - this.uAct) * k;
     const u = Math.max(0, this.uAct + (r[REG.ONOFF] ? (Math.random() - 0.5) * 0.02 : 0)), i = u / R, p = u * i;
@@ -642,9 +644,14 @@ function onSample(r) {
   const now = performance.now();
   const s = { uset: r[0] / S.vs, iset: r[1] / S.is, u: r[2] / S.vs, i: r[3] / S.io, uin: r[5] / S.vs, lock: !!r[6], prot: r[7], cc: !!r[8], on: !!r[9], bled: r[10] };
   s.p = s.u * s.i;
+  /* Input-limited (dropout): output well below the setpoint while current is well below its limit.
+     The supply flags this as CC; require 3 samples in a row so switch-on transients don't trigger it. */
+  const dropNow = s.on && s.u < s.uset - 0.3 && s.i < s.iset * 0.9;
+  S.dropCnt = dropNow ? (S.dropCnt || 0) + 1 : 0;
+  s.drop = S.dropCnt >= 3;
   if (S.lastT != null && s.on) { const dh = (now - S.lastT) / 3600000; S.ah += s.i * dh; S.wh += s.p * dh; }
   S.lastT = now; S.last = s;
-  if (S.t0 == null) S.t0 = now;
+  if (S.t0 == null) { S.t0 = now; S.t0Wall = Date.now(); }
   s.t = (now - S.t0) / 1000;
   if (s.on) {
     S.min.u = Math.min(S.min.u ?? Infinity, s.u); S.max.u = Math.max(S.max.u ?? 0, s.u);
@@ -682,8 +689,11 @@ function syncSetpointInputs(s) {
 }
 function markDirty() {
   if (!S.devSet) return;
-  [['#setV', S.devSet.u, S.vs], ['#setI', S.devSet.i, S.is]].forEach(([sel, val, sc]) => {
-    const el = $(sel); el.classList.toggle('dirty', Math.abs((parseFloat(el.value) || 0) - val) > 0.5 / sc);
+  [['#setV', '#setVHint', S.devSet.u, S.vs, fV, 'V'], ['#setI', '#setIHint', S.devSet.i, S.is, fI, 'A']].forEach(([sel, hint, val, sc, fmt, unit]) => {
+    const el = $(sel), dirty = Math.abs((parseFloat(el.value) || 0) - val) > 0.5 / sc, h = $(hint);
+    el.classList.toggle('dirty', dirty);
+    h.hidden = !dirty;
+    if (dirty) h.textContent = `not sent · supply has ${fmt(val)} ${unit} · Enter sends`;
   });
 }
 function syncNow() { if (!S.last) return; S.needFill = true; syncSetpointInputs(S.last); readProtection().catch(() => {}); }
@@ -694,7 +704,10 @@ function updateReadouts(s) {
   $('#roU').textContent = fV(s.u); $('#roI').textContent = fIo(s.i); $('#roP').textContent = fP(s.p);
   $('#roUset').textContent = fV(s.uset); $('#roIset').textContent = fI(s.iset); $('#roUin').textContent = fV(s.uin);
   $('#roR').textContent = s.on && s.i > 0.005 ? (s.u / s.i).toFixed(2) : '--';
-  const bm = $('#bMode'); bm.textContent = s.on ? (s.cc ? 'CC' : 'CV') : 'IDLE'; bm.className = 'badge ' + (s.on ? (s.cc ? 'cc' : 'cv') : '');
+  const bm = $('#bMode');
+  bm.textContent = !s.on ? 'IDLE' : s.drop ? 'INPUT LIMIT' : s.cc ? 'CC' : 'CV';
+  bm.className = 'badge ' + (!s.on ? '' : s.drop ? 'cc' : s.cc ? 'cc' : 'cv');
+  bm.title = s.drop ? `Output is held below the ${fV(s.uset)} V setpoint because the input (${fV(s.uin)} V) is too low. The supply reports this as ${s.cc ? 'CC' : 'CV'}.` : '';
   const bp = $('#bProt'); bp.textContent = s.prot ? PROT[s.prot] || 'PROT ' + s.prot : 'PROT OK'; bp.className = 'badge ' + (s.prot ? 'bad' : 'ok');
   $('#bLock').textContent = s.lock ? 'KEYS LOCKED' : 'KEYS FREE';
   $('#btnLock').textContent = s.lock ? 'Unlock keys' : 'Lock keys';
@@ -708,7 +721,7 @@ function updateOutSwitch(s) {
   const st = $('#outState'), tripped = !s.on && s.prot;
   st.classList.toggle('on', s.on); st.classList.toggle('tripped', !!tripped);
   $('#outSt').textContent = s.on ? 'ON' : 'OFF';
-  $('#outWhy').textContent = s.on ? `${fV(s.u)} V · ${fIo(s.i)} A · ${s.cc ? 'current limited (CC)' : 'constant voltage (CV)'}`
+  $('#outWhy').textContent = s.on ? `${fV(s.u)} V · ${fIo(s.i)} A · ${s.drop ? `limited by input voltage (${fV(s.uin)} V in)` : s.cc ? 'current limited (CC)' : 'constant voltage (CV)'}`
     : tripped ? `switched off by ${PROT[s.prot]} protection` : `no voltage on the terminals · set ${fV(s.uset)} V / ${fI(s.iset)} A`;
   const b = $('#btnOut');
   if (!b.classList.contains('busy')) {
@@ -732,6 +745,37 @@ function updateStats() {
 function resetCounters() { S.ah = 0; S.wh = 0; S.min = {}; S.max = {}; S.cntT0 = performance.now(); updateStats(); }
 
 /* ============================== chart ============================== */
+/* Time axis. x values are seconds since the chart started (or was cleared).
+   Three label formats: elapsed hh:mm:ss.s, plain seconds, or time of day hh:mm:ss.s.
+   Ticks sit on round steps of the shown time, chosen to fit the chart width. */
+const TIME_TITLES = { elapsed: 'elapsed since chart start (hh:mm:ss.s)', seconds: 'elapsed since chart start (s)', clock: 'time of day (hh:mm:ss.s)' };
+const timeMode = () => { const v = document.getElementById('chTime')?.value; return TIME_TITLES[v] ? v : 'elapsed'; };
+function fmtHMS(sec, wrap24) {
+  const t = Math.round(Math.max(0, sec) * 10), d = t % 10, x = Math.floor(t / 10), p = n => String(n).padStart(2, '0');
+  const h = Math.floor(x / 3600);
+  return `${p(wrap24 ? h % 24 : h)}:${p(Math.floor(x / 60) % 60)}:${p(x % 60)}.${d}`;
+}
+/* seconds into the local day at which the chart's t = 0 lies (time-of-day mode only) */
+function timeBase() {
+  if (timeMode() !== 'clock' || S.t0Wall == null) return 0;
+  const d = new Date(S.t0Wall);
+  return d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() + d.getMilliseconds() / 1000;
+}
+function fmtAxisTime(v) {
+  const m = timeMode();
+  if (m === 'seconds') return (Math.round(v * 10) / 10).toFixed(1) + ' s';
+  return fmtHMS(v + timeBase(), m === 'clock');
+}
+const TICK_STEPS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 10800, 21600];
+function buildTimeTicks(axis) {
+  const min = axis.min, max = axis.max; if (!(max > min)) return;
+  const want = Math.max(2, Math.floor(axis.width / 95)), span = max - min;
+  const step = TICK_STEPS.find(s => span / s <= want) || TICK_STEPS[TICK_STEPS.length - 1];
+  const base = timeBase(), ticks = [];
+  for (let t = Math.ceil((min + base) / step - 1e-9) * step; t <= max + base + 1e-9; t += step) ticks.push({ value: +(t - base).toFixed(4) });
+  axis.ticks = ticks;
+}
+
 let chart = null;
 if (typeof Chart !== 'undefined') {
   Chart.defaults.font.size = 11;
@@ -743,9 +787,10 @@ if (typeof Chart !== 'undefined') {
       animation: false, parsing: false, normalized: true, responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'nearest', axis: 'x', intersect: false },
       plugins: { decimation: { enabled: true, algorithm: 'lttb', samples: 800 }, legend: { labels: { boxWidth: 12 } },
-        tooltip: { callbacks: { title: it => it.length ? it[0].parsed.x.toFixed(1) + ' s' : '' } } },
+        tooltip: { callbacks: { title: it => it.length ? fmtAxisTime(it[0].parsed.x) : '' } } },
       scales: {
-        x: { type: 'linear', title: { display: true, text: 'time (s)' } },
+        x: { type: 'linear', title: { display: true, text: TIME_TITLES.elapsed },
+             ticks: { callback: v => fmtAxisTime(v), maxRotation: 0, autoSkip: false }, afterBuildTicks: buildTimeTicks },
         yV: { position: 'left', display: 'auto', title: { display: true, text: 'V' }, beginAtZero: true },
         yI: { position: 'right', display: 'auto', title: { display: true, text: 'A' }, beginAtZero: true, grid: { drawOnChartArea: false } },
         yP: { position: 'right', display: 'auto', title: { display: true, text: 'W' }, beginAtZero: true, grid: { drawOnChartArea: false } }
@@ -788,7 +833,7 @@ function redrawChart() {
   chart.options.scales.x.max = win ? Math.max(win, last) : undefined;
   chart.update('none');
 }
-function clearChart() { S.cd.v.length = 0; S.cd.i.length = 0; S.cd.p.length = 0; S.t0 = null; redrawChart(); }
+function clearChart() { S.cd.v.length = 0; S.cd.i.length = 0; S.cd.p.length = 0; S.t0 = null; S.t0Wall = null; redrawChart(); }
 
 /* ============================== setpoints & controls ============================== */
 function checkV(v) { if (!Number.isFinite(v) || v < 0 || v > S.vmax) throw new Error(`Voltage must be 0–${S.vmax} V`); return v; }
@@ -796,17 +841,33 @@ function checkI(i) { if (!Number.isFinite(i) || i < 0 || i > S.imax) throw new E
 async function guard(fn) { try { await fn(); } catch (e) { toast(e.message, true); } }
 const setV = v => S.mb.write(REG.USET, checkV(v) * S.vs);
 const setI = i => S.mb.write(REG.ISET, checkI(i) * S.is);
+/* User setpoint change: write, read back, and report if the supply stored something else. */
+async function sendSetpoints(v, i) {
+  if (v != null) checkV(v); if (i != null) checkI(i);
+  if (v != null && i != null) await S.mb.writeMany(0, [v * S.vs, i * S.is]);
+  else if (v != null) await setV(v); else await setI(i);
+  const [ru, ri] = await S.mb.read(0, 2, 'tool');
+  const gotV = ru / S.vs, gotI = ri / S.is, bad = [];
+  if (v != null && Math.abs(gotV - v) > 0.5 / S.vs) bad.push(`voltage ${fV(gotV)} V instead of ${fV(v)} V`);
+  if (i != null && Math.abs(gotI - i) > 0.5 / S.is) bad.push(`current ${fI(gotI)} A instead of ${fI(i)} A`);
+  S.devSet = { u: gotV, i: gotI };
+  if (bad.length) {
+    S.needFill = true;
+    toast(`The supply stored ${bad.join(' and ')}. It limits setpoints itself (for example to its input voltage or protection limits).`, true);
+  }
+  markDirty();
+}
 const setOut = on => S.mb.write(REG.ONOFF, on ? 1 : 0);
 
-$('#btnApply').onclick = () => guard(() => S.mb.writeMany(0, [checkV(num('#setV')) * S.vs, checkI(num('#setI')) * S.is]));
-$('#setV').onkeydown = e => { if (e.key === 'Enter') guard(() => setV(num('#setV'))); };
-$('#setI').onkeydown = e => { if (e.key === 'Enter') guard(() => setI(num('#setI'))); };
+$('#btnApply').onclick = () => guard(() => sendSetpoints(num('#setV'), num('#setI')));
+$('#setV').onkeydown = e => { if (e.key === 'Enter') guard(() => sendSetpoints(num('#setV'), null)); };
+$('#setI').onkeydown = e => { if (e.key === 'Enter') guard(() => sendSetpoints(null, num('#setI'))); };
 $$('.steps').forEach(box => box.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   const isV = box.dataset.p === 'V', inp = isV ? $('#setV') : $('#setI'), max = isV ? S.vmax : S.imax;
   const nv = Math.min(max, Math.max(0, (parseFloat(inp.value) || 0) + parseFloat(b.dataset.d)));
   inp.value = isV ? fV(nv) : fI(nv);
-  guard(() => isV ? setV(nv) : setI(nv));
+  guard(() => isV ? sendSetpoints(nv, null) : sendSetpoints(null, nv));
 }));
 $('#btnOut').onclick = () => guard(async () => {
   const b = $('#btnOut'), turnOn = !(S.last && S.last.on);
@@ -853,6 +914,10 @@ $('#btnExportCsv').onclick = () => {
   download(`dps_log_${stamp()}.csv`, head + '\n' + S.recRows.map(r => r.join(',')).join('\n'), 'text/csv');
 };
 $('#chWin').onchange = () => { store.set('chWin', $('#chWin').value); redrawChart(); };
+function applyTimeMode() { if (chart) { chart.options.scales.x.title.text = TIME_TITLES[timeMode()]; redrawChart(); } }
+$('#chTime').value = TIME_TITLES[store.get('chTime', 'elapsed')] ? store.get('chTime', 'elapsed') : 'elapsed';
+$('#chTime').onchange = () => { store.set('chTime', $('#chTime').value); applyTimeMode(); };
+applyTimeMode();
 $('#btnPause').onclick = () => { S.paused = !S.paused; $('#btnPause').textContent = S.paused ? 'Resume' : 'Pause'; if (!S.paused) redrawChart(); };
 $('#btnChClear').onclick = clearChart;
 

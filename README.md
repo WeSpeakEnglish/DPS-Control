@@ -112,6 +112,7 @@ Only `id`, `model`, `vMax` and `iMax` are required; everything else has defaults
 6. Readings refresh every 100 ms by default (Settings → Poll ms, minimum 50). After every command the page reads back immediately and polls as fast as the link allows for 1.5 s, so a switch or setpoint change shows within ~0.1 s at 9600 baud. **Read round-trip ms** in Measurements shows the real link speed; 19200 baud roughly halves it.
 7. The browser tab title shows live V / A, readouts grey out as *stale* if the supply stops answering, and the screen is kept awake while a tool, cutoff or recording is running.
 8. **Theme:** the header button cycles **◐ Auto** (follows your system light/dark setting) → **☀ Light** → **☾ Dark**. The choice is remembered, and the chart follows the theme. To change colours, edit the tokens at the top of `dps-control.css`.
+9. **Chart time axis:** pick **Elapsed hh:mm:ss.s** (default, time since the chart started or was cleared), **Seconds** (e.g. 125.0 s) or **Time of day** (e.g. 12:14:03.5) in the chart header. Ticks fall on round steps, and the choice is remembered.
 
 No hardware at hand? Click **Simulator**. It emulates the device chosen in Settings (Auto-detect = DPS5015) with an adjustable resistive load, realistic output settling and ~1 % dropped frames.
 
@@ -167,7 +168,8 @@ Other corrections from the document: CV/CC lists "CV" for both values (1 is CC);
 
 - Set **OVP / OCP / OPP** before connecting a load. They live in group M0 and are enforced by the supply itself, independently of the PC.
 - The auto-cutoff and sequences run in the browser tab. If the PC sleeps, the tab is closed or the USB cable is pulled, the supply keeps its last setting. Rely on the hardware protection limits, not on the software.
-- Keep the setpoint ≤ input voltage − ~1.5 V on buck (DPS) models.
+- Keep the setpoint ≤ input voltage − ~1.5 V on buck (DPS) models. When the input is too low the output stays below the setpoint and the supply reports CC even at 0 A; the app detects this and shows **INPUT LIMIT** instead.
+- After every setpoint change the app reads the value back. If the supply stored something different, you get a warning with both values.
 
 ---
 

@@ -131,6 +131,8 @@ input[type=number] { width: 90px; }
 input[type=range] { padding: 0; accent-color: var(--acc); }
 input[type=checkbox] { accent-color: var(--acc); }
 input.dirty { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn) inset; }
+.unsent { font-size: 11px; color: var(--warn); }
+.unsent[hidden] { display: none; }
 
 button { cursor: pointer; }
 button:hover:not(:disabled) { border-color: var(--line-hover); }
