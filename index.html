@@ -62,15 +62,15 @@
       <h2>Setpoints</h2>
       <fieldset class="needconn" disabled>
         <div class="grid2">
-          <span>Voltage</span><div class="row m0"><input id="setV" type="number" step="0.01" min="0" value="0"> V <span class="unsent" id="setVHint" hidden></span></div>
+          <span>Voltage</span><div class="row m0"><input id="setV" type="number" step="0.01" min="0" value="0"> V <span class="unsent" id="setVHint" hidden><span class="msg"></span><button class="mini" data-act="send" data-p="V">Apply</button><button class="mini" data-act="undo" data-p="V">Undo</button></span></div>
           <span></span><div class="steps" data-p="V"><button data-d="-1">−1</button><button data-d="-0.1">−0.1</button><button data-d="-0.01">−0.01</button><button data-d="0.01">+0.01</button><button data-d="0.1">+0.1</button><button data-d="1">+1</button></div>
-          <span>Current</span><div class="row m0"><input id="setI" type="number" step="0.01" min="0" value="0"> A <span class="unsent" id="setIHint" hidden></span></div>
+          <span>Current</span><div class="row m0"><input id="setI" type="number" step="0.01" min="0" value="0"> A <span class="unsent" id="setIHint" hidden><span class="msg"></span><button class="mini" data-act="send" data-p="I">Apply</button><button class="mini" data-act="undo" data-p="I">Undo</button></span></div>
           <span></span><div class="steps" data-p="I"><button data-d="-1">−1</button><button data-d="-0.1">−0.1</button><button data-d="-0.01">−0.01</button><button data-d="0.01">+0.01</button><button data-d="0.1">+0.1</button><button data-d="1">+1</button></div>
         </div>
         <div class="row mt10"><button class="primary" id="btnApply">Apply V &amp; I</button><button id="btnSync" title="Load the supply's current setpoints into the fields now">⟳ Sync now</button><button id="btnLock">Lock keys</button></div>
         <div class="row"><label title="When on, the fields follow setpoint changes made on the front panel, by presets or by tools. When off, they change only when you type, press Sync now, or connect."><input type="checkbox" id="autoSync" checked> Auto-sync fields from supply</label></div>
         <div class="row"><span class="muted">Backlight</span><input id="bled" type="range" min="0" max="5" step="1" value="3"><span id="bledVal" class="muted">3</span></div>
-        <div class="muted">Enter in a field applies it. Step buttons apply immediately. An orange field differs from the supply's setpoint (not yet sent, or changed on the supply while auto-sync is off).</div>
+        <div class="muted">Enter in a field applies it. Step buttons apply immediately. An orange field holds a value the supply doesn't have yet: <b>Apply</b> sends it, <b>Undo</b> brings back the supply's value.</div>
       </fieldset>
     </section>
 
@@ -693,7 +693,10 @@ function markDirty() {
     const el = $(sel), dirty = Math.abs((parseFloat(el.value) || 0) - val) > 0.5 / sc, h = $(hint);
     el.classList.toggle('dirty', dirty);
     h.hidden = !dirty;
-    if (dirty) h.textContent = `not sent · supply has ${fmt(val)} ${unit} · Enter sends`;
+    if (dirty) {
+      h.querySelector('.msg').textContent = `Not applied · supply: ${fmt(val)} ${unit}`;
+      h.title = `The field shows ${el.value} ${unit} but the supply is set to ${fmt(val)} ${unit}. Apply (or Enter) sends the field value; Undo puts the supply value back in the field.`;
+    }
   });
 }
 function syncNow() { if (!S.last) return; S.needFill = true; syncSetpointInputs(S.last); readProtection().catch(() => {}); }
@@ -860,6 +863,11 @@ async function sendSetpoints(v, i) {
 const setOut = on => S.mb.write(REG.ONOFF, on ? 1 : 0);
 
 $('#btnApply').onclick = () => guard(() => sendSetpoints(num('#setV'), num('#setI')));
+document.querySelectorAll('.unsent button.mini').forEach(b => b.onclick = () => {
+  const isV = b.dataset.p === 'V', el = isV ? $('#setV') : $('#setI');
+  if (b.dataset.act === 'send') guard(() => isV ? sendSetpoints(num('#setV'), null) : sendSetpoints(null, num('#setI')));
+  else if (S.devSet) { el.value = isV ? fV(S.devSet.u) : fI(S.devSet.i); markDirty(); }
+});
 $('#setV').onkeydown = e => { if (e.key === 'Enter') guard(() => sendSetpoints(num('#setV'), null)); };
 $('#setI').onkeydown = e => { if (e.key === 'Enter') guard(() => sendSetpoints(null, num('#setI'))); };
 $$('.steps').forEach(box => box.addEventListener('click', e => {
